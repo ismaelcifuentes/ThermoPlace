@@ -1,0 +1,5 @@
+* text=auto
+*.bat text eol=crlf
+*.sh text eol=lf
+# Keep benchmark files byte-identical to the originals (MCNC files use CRLF)
+benchmarks/** -text

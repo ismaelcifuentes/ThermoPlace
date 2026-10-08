@@ -1,0 +1,9 @@
+Outline: 10 10
+NumBlocks: 3
+NumTerminals: 1
+
+A 4 2
+B 2 2
+C 4 1
+
+P1 terminal 10 10
