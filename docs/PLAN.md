@@ -25,16 +25,22 @@ Las tres partes se trabajan **en paralelo desde el minuto 1**. Los `.hpp` de `in
 **Punto de control 2:30:** los tres grupos de tests en verde (`thermoplace_tests core`).
 Si alguien está trabado a las 2:00, avise al grupo **ya**; no lo dejen para el final.
 
-## Semanas 3–8 (hacia la revisión 2 y el paper)
+## Calendario hasta la entrega final (actualizado el 8 de octubre de 2026)
 
-| Semana | Ismael | Eimi | Jose |
-|---|---|---|---|
-| 3 | `moveNode` (I7) + motor de **simulated annealing** (temperatura, enfriamiento, aceptación de Metropolis) | Opciones de línea de comandos para SA, salida CSV por corrida | Función de costo: área + α·HPWL normalizados; gráficas de convergencia |
-| 4 | Ajuste de SA (perturbaciones, criterio de parada) | **Comparación con resultados publicados** de ami33/ami49 (tabla) | Gráficas de floorplans finales; revisión de que HPWL coincide con la definición de los papers |
-| 5 | **Modelo térmico en matriz**: grilla N×N, potencia por celda, difusión de calor resuelta con Jacobi/Gauss-Seidel → temperatura máxima | Corridas con y sin temperatura (mismas semillas) | **J7** potencia sintética + `.ptrace`; instalar y correr **HotSpot** con los `.flp` exportados |
-| 6 | Temperatura dentro del costo de SA | Barrido del peso térmico → **frente de Pareto área vs. Tmax** | **Validación del modelo rápido contra HotSpot** (error y tiempo según tamaño de grilla) |
-| 7 | Contour O(n) con lista enlazada + medición de tiempo | **E6** GSRC n100–n300: escalabilidad | Figuras para el paper |
-| 8 | Paper: sección *Method* | Paper: *Introduction*, *Related work*, edición final | Paper: *Experiments*, *Results* |
+Entrega final: **jueves 3 de diciembre de 2026**. Meta interna: **todo terminado el 25 de noviembre**, para dejar una semana de margen.
+
+| Semana | Fechas | Ismael | Eimi | Jose |
+|---|---|---|---|---|
+| 1 | 8–14 oct | **Revisión 1**: B\*-tree + contour (hecho), merge de PRs, PDF y video | Lector, integración, ami33, PDF | Métricas, validador, SVG/FLP, capturas |
+| 2 | 15–21 oct | `moveNode` (I7) + motor de **simulated annealing** (temperatura, enfriamiento, aceptación de Metropolis) | Opciones de línea de comandos para SA, salida CSV por corrida | Función de costo: área + α·HPWL normalizados; gráficas de convergencia |
+| 3 | 22–28 oct | Ajuste de SA (perturbaciones, criterio de parada) | **Comparación con resultados publicados** de ami33/ami49 (tabla) | Gráficas de floorplans finales; revisar que HPWL coincida con la definición de los papers |
+| 4 | 29 oct–4 nov | **Modelo térmico en matriz**: grilla N×N, potencia por celda, difusión de calor con Jacobi/Gauss-Seidel → temperatura máxima | Corridas con y sin temperatura (mismas semillas) | **J7** potencia sintética + `.ptrace`; instalar y correr **HotSpot** con los `.flp` exportados |
+| 5 | 5–11 nov | Temperatura dentro del costo de SA | Barrido del peso térmico → **frente de Pareto área vs. Tmax** | **Validación del modelo rápido contra HotSpot** (error y tiempo según tamaño de grilla) |
+| 6 | 12–18 nov | Contour O(n) con lista enlazada + medición de tiempo | **E6** GSRC n100–n300: escalabilidad | Figuras para el informe |
+| 7 | 19–25 nov | Informe: sección *Method* | Informe: *Introduction*, *Related work*, edición final | Informe: *Experiments*, *Results* |
+| margen | 26 nov–3 dic | Revisión final, README, PDF y videos finales, **entrega el 3 de diciembre** | igual | igual |
+
+Regla: si una semana se atrasa, se recorta alcance (por ejemplo, el contour O(n) o GSRC) antes que tocar la semana de margen.
 
 ## La contribución del paper (para no perder el foco)
 
