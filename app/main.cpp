@@ -1,5 +1,5 @@
 // ThermoPlace - command line program.
-// OWNER: Eimi (integration). Follow docs/MANUAL_EIMI.md, tasks E5 and E7.
+// OWNER: Eimi (integration).
 //
 // Usage:
 //   thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]
@@ -7,6 +7,7 @@
 //   thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000
 #include <cstdio>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <string>
@@ -72,24 +73,26 @@ int main(int argc, char** argv) {
     Options opt;
     if (!parseArgs(argc, argv, opt)) { usage(); return 2; }
 
-    // 1) Load the benchmark ----------------------------------------------------
+    // 1) Load the benchmark
     Design d;
     std::string err;
     if (!loadBenchmark(opt.input, d, err)) {
         std::cerr << "Could not load benchmark: " << err << "\n";
         return 1;
     }
+    // Fixed notation: the default would print ami33's block area as 1.15645e+06.
+    std::cout << std::fixed << std::setprecision(0);
     std::cout << "Design " << d.name << ": " << d.blocks.size() << " blocks, "
               << d.terminals.size() << " terminals, " << d.nets.size() << " nets, outline "
               << d.outlineW << " x " << d.outlineH << ", block area " << d.totalBlockArea() << "\n";
 
-    // 2) Initial B*-tree and packing --------------------------------------------
+    // 2) Initial B*-tree and packing
     BStarTree tree;
     tree.buildInitial(static_cast<int>(d.blocks.size()));
     if (!tree.isValid()) std::cout << "  [warn] B*-tree is not valid yet (Ismael's part)\n";
     tree.pack(d);
 
-    // 3) Check legality and measure ---------------------------------------------
+    // 3) Check legality and measure
     ValidationReport rep = validatePlacement(d);
     std::cout << "Validation: " << (rep.ok ? "OK (no overlaps)" : "FAILED") << "\n";
     for (std::size_t i = 0; i < rep.errors.size() && i < 10; ++i)
@@ -98,12 +101,48 @@ int main(int argc, char** argv) {
     printMetrics("initial", m0);
     exportAll(d, opt, "initial");
 
-    // 4) Optional quick optimization (demo for review 1) ------------------------
-    if (opt.iters > 0) {
-        // TODO(Eimi): task E7 - random search: perturb (swap two nodes or rotate
-        // one block), pack, keep the change if the chip area improves,
-        // otherwise undo it. Week 3 replaces this with simulated annealing.
-        std::cout << "Random search not implemented yet (TODO Eimi, task E7)\n";
+    // 4) Optional quick optimization (demo for review 1)
+    if (opt.iters > 0 && tree.size() > 1) {
+        // E7. Stand-in for simulated annealing (week 3): a change is kept only if the
+        // chip area shrinks. It stalls in local minima, which is exactly what SA fixes,
+        // so the before/after numbers here are the baseline SA has to beat.
+        std::mt19937 rng(opt.seed);
+        std::uniform_int_distribution<int> anyNode(0, tree.size() - 1);
+        std::bernoulli_distribution doSwap(0.5);
+
+        double bestArea = m0.chipArea;
+        long improvements = 0;
+        for (long it = 0; it < opt.iters; ++it) {
+            BStarTree candidate = tree;
+            int rotated = -1;
+            if (doSwap(rng)) {
+                candidate.swapBlocks(anyNode(rng), anyNode(rng));
+            } else {
+                rotated = candidate.node(anyNode(rng)).block;
+                d.blocks[rotated].rotated = !d.blocks[rotated].rotated;
+            }
+
+            candidate.pack(d);
+            double area = computeMetrics(d).chipArea;
+            if (area < bestArea) {
+                bestArea = area;
+                tree = candidate;
+                ++improvements;
+            } else if (rotated >= 0) {
+                // Rotation is stored in the Design, not in the tree, so a rejected
+                // rotation has to be undone by hand.
+                d.blocks[rotated].rotated = !d.blocks[rotated].rotated;
+            }
+        }
+
+        // d still holds the positions of the last candidate tried, not of the best tree.
+        tree.pack(d);
+        rep = validatePlacement(d);
+        std::cout << "Random search: " << opt.iters << " iterations, " << improvements
+                  << " improvements (seed " << opt.seed << ")\n";
+        std::cout << "Validation: " << (rep.ok ? "OK (no overlaps)" : "FAILED") << "\n";
+        printMetrics("best", computeMetrics(d));
+        exportAll(d, opt, "best");
     }
 
     return rep.ok ? 0 : 3;
