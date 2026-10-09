@@ -34,19 +34,25 @@ does each degree of peak temperature cost in extra area?
 | Component | Owner | Status |
 |---|---|---|
 | Data model (`Design`, `Block`, `Net`) | team | done |
-| MCNC benchmark reader (`.block`, `.nets`) | Eimi | in progress |
-| B\*-tree + contour packing | Ismael | in progress |
-| Metrics (area, dead space, HPWL) and overlap validator | Jose | in progress |
-| SVG picture + HotSpot `.flp` export | Jose | in progress |
-| Random-search demo (precursor of simulated annealing) | Eimi | in progress |
+| Benchmark reader: MCNC (`.block`, `.nets`) and GSRC (`.hardblocks`, `.pl`, `.nets`) | Eimi | done |
+| B\*-tree + contour packing | Ismael | done |
+| Metrics (area, dead space, HPWL) and overlap validator | Jose | done |
+| SVG picture + HotSpot `.flp` export | Jose | done |
+| Random-search demo (precursor of simulated annealing) | Eimi | done |
 | Unit tests (31 tests, no external framework) | team | done |
 
-Results on ami33 (fill in after integration):
+Results on ami33 (20000 iterations of random search, seed 1, 38 accepted moves):
 
-| Benchmark | Blocks | Chip area | Dead space | HPWL |
-|---|---|---|---|---|
-| ami33 initial | 33 | | | |
-| ami33 after random search | 33 | | | |
+| Benchmark | Blocks | Chip (w x h) | Chip area | Dead space | HPWL |
+|---|---|---|---|---|---|
+| ami33 initial | 33 | 1568 x 2982 | 4675776 | 75.27% | 219753 |
+| ami33 after random search | 33 | 784 x 1946 | 1525664 | 24.20% | 161738 |
+
+Both placements pass the overlap check. Neither fits the fixed outline (1326 x 1205) yet:
+random search only minimizes chip area, and the outline term belongs to the simulated
+annealing cost function (week 3).
+
+Reproduce with `build\thermoplace.exe benchmarks\mcnc\ami33.block --out results --iters 20000`.
 
 ## Build
 
