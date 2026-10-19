@@ -21,6 +21,9 @@ add_library(thermoplace_core
   src/Validator.cpp     # Jose
   src/Exporters.cpp     # Jose
   src/Power.cpp         # Jose (extra)
+  src/Annealer.cpp      # Ismael (week 2)
+  src/Cost.cpp          # Jose (week 2)
+  src/Report.cpp        # Eimi (week 2)
 )
 target_include_directories(thermoplace_core PUBLIC include)
 
@@ -35,6 +38,7 @@ add_executable(thermoplace_tests
   tests/test_bstar.cpp
   tests/test_outputs.cpp
   tests/test_integration.cpp
+  tests/test_week2.cpp
 )
 target_link_libraries(thermoplace_tests PRIVATE thermoplace_core)
 target_compile_definitions(thermoplace_tests PRIVATE

@@ -4,6 +4,9 @@
 
 #include <string>
 
+#include <vector>
+
+#include "thermoplace/Annealer.hpp"
 #include "thermoplace/Design.hpp"
 
 namespace tp {
@@ -27,5 +30,12 @@ bool exportPTrace(const Design& d, const std::string& path, std::string& err);
 // EXTRA (week 5): writes a CSV "name,x,y,w,h,rotated,power" for plotting and
 // for the benchmark tables of the paper.
 bool exportCSV(const Design& d, const std::string& path, std::string& err);
+
+// WEEK 2: convergence plot of simulated annealing as an SVG line chart.
+// x = temperature step, y = cost. Draw TWO <polyline> elements: current cost
+// and best cost (in different colors), axes with the min and max cost written,
+// and a title. Returns false if the trace is empty or the file cannot be opened.
+bool exportConvergenceSVG(const std::vector<SATracePoint>& trace, const std::string& path,
+                          const std::string& title, std::string& err);
 
 }  // namespace tp
