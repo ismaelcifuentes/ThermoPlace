@@ -67,10 +67,26 @@ void BStarTree::swapBlocks(int nodeA, int nodeB) {
     std::swap(nodes_[nodeA].block, nodes_[nodeB].block);
 }
 
+// I7 (simple version): moves a LEAF to a free slot of another node.
+// Fails (returns false, tree unchanged) if `node` is the root, if it is the
+// same node as `newParent`, if `node` has children, or if the slot is taken.
 bool BStarTree::moveNode(int node, int newParent, bool asLeftChild) {
-    // TODO(Ismael, EXTRA week 3): task I7.
-    (void)node; (void)newParent; (void)asLeftChild;
-    return false;
+    const int n = size();
+    if (node < 0 || node >= n || newParent < 0 || newParent >= n) return false;
+    if (node == root_ || node == newParent) return false;
+    if (nodes_[node].left != -1 || nodes_[node].right != -1) return false;  // not a leaf
+    int& slot = asLeftChild ? nodes_[newParent].left : nodes_[newParent].right;
+    if (slot != -1) return false;  // that position is already used
+
+    // 1) Detach the leaf from its current parent.
+    int oldParent = nodes_[node].parent;
+    if (nodes_[oldParent].left == node) nodes_[oldParent].left = -1;
+    else nodes_[oldParent].right = -1;
+
+    // 2) Attach it to the free slot of the new parent.
+    slot = node;
+    nodes_[node].parent = newParent;
+    return true;
 }
 
 // I4: checks that the tree is a correct B*-tree:
