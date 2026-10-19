@@ -96,3 +96,15 @@ bool exportCSV(const Design& d, const std::string& path, std::string& err) {
 }
 
 }  // namespace tp
+
+namespace tp {
+
+bool exportConvergenceSVG(const std::vector<SATracePoint>& trace, const std::string& path,
+                          const std::string& title, std::string& err) {
+    // TODO(Jose, week 2): task J9.
+    (void)trace; (void)path; (void)title;
+    err = "exportConvergenceSVG not implemented yet (TODO Jose)";
+    return false;
+}
+
+}  // namespace tp
