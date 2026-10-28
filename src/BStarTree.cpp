@@ -89,6 +89,26 @@ bool BStarTree::moveNode(int node, int newParent, bool asLeftChild) {
     return true;
 }
 
+// I10: moves a node with its whole subtree to a free slot of another node.
+bool BStarTree::moveSubtree(int node, int newParent, bool asLeftChild) {
+    const int n = size();
+    if (node < 0 || node >= n || newParent < 0 || newParent >= n) return false;
+    if (node == root_) return false;
+    int& slot = asLeftChild ? nodes_[newParent].left : nodes_[newParent].right;
+    if (slot != -1) return false;
+    // newParent must not be inside the subtree of node (that would make a cycle):
+    // walk up from newParent to the root and check that we never meet node.
+    for (int v = newParent; v != -1; v = nodes_[v].parent) {
+        if (v == node) return false;
+    }
+    int oldParent = nodes_[node].parent;
+    if (nodes_[oldParent].left == node) nodes_[oldParent].left = -1;
+    else nodes_[oldParent].right = -1;
+    slot = node;
+    nodes_[node].parent = newParent;
+    return true;
+}
+
 // I4: checks that the tree is a correct B*-tree:
 // root has no parent, every node is reached exactly once from the root,
 // parent/child links agree, and every block 0..n-1 appears exactly once.

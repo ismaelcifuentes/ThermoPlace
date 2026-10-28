@@ -13,7 +13,7 @@ echo Building thermoplace.exe ...
 g++ %FLAGS% %SRC% app\main.cpp -o build\thermoplace.exe || goto :error
 
 echo Building thermoplace_tests.exe ...
-g++ %FLAGS% %SRC% tests\test_main.cpp tests\test_parser.cpp tests\test_bstar.cpp tests\test_outputs.cpp tests\test_integration.cpp tests\test_week2.cpp -o build\thermoplace_tests.exe || goto :error
+g++ %FLAGS% %SRC% tests\test_main.cpp tests\test_parser.cpp tests\test_bstar.cpp tests\test_outputs.cpp tests\test_integration.cpp tests\test_week2.cpp tests\test_week3.cpp -o build\thermoplace_tests.exe || goto :error
 
 echo Done.
 goto :eof

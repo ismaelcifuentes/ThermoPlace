@@ -37,7 +37,11 @@ struct SAParams {
     // Mix of moves (relative weights, they do not need to add up to 1).
     double wRotate = 1.0;         // rotate one block 90 degrees
     double wSwap = 1.0;           // swapBlocks
-    double wMove = 1.0;           // moveNode (a leaf to a free slot)
+    double wMove = 1.0;           // moveNode / moveSubtree (to a free slot)
+    // WEEK 3 (optional): tells whether a packed design is acceptable, e.g. "fits
+    // the fixed outline". When set, anneal returns the best ACCEPTABLE solution it
+    // saw (if it saw any), even if an unacceptable one had a lower cost.
+    std::function<bool(const Design&)> feasible;
 };
 
 // One row per temperature step (Eimi writes these to CSV, Jose plots them).
@@ -55,6 +59,7 @@ struct SAResult {
     long moves = 0;            // moves tried
     long accepted = 0;         // moves accepted
     int temperatures = 0;      // temperature steps done
+    bool feasibleFound = false; // only meaningful when params.feasible is set
     std::vector<SATracePoint> trace;
 };
 
@@ -63,6 +68,8 @@ struct SAResult {
 // On return: `tree` is the BEST tree found, and `d` holds the packing of that
 // tree (positions AND rotation flags), so computeMetrics(d) gives its numbers
 // and cost(d) == result.bestCost.
+// With params.feasible set and some feasible solution found, "best" means the
+// best FEASIBLE one, so result.bestCost can be higher than trace.back().bestCost.
 SAResult anneal(Design& d, BStarTree& tree, const CostFunction& cost,
                 const SAParams& params = SAParams());
 
