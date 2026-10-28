@@ -39,6 +39,7 @@ add_executable(thermoplace_tests
   tests/test_outputs.cpp
   tests/test_integration.cpp
   tests/test_week2.cpp
+  tests/test_week3.cpp
 )
 target_link_libraries(thermoplace_tests PRIVATE thermoplace_core)
 target_compile_definitions(thermoplace_tests PRIVATE

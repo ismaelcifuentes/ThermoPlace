@@ -5,6 +5,7 @@
 //   thermoplace_tests jose       -> only Jose's groups   (metrics, validator, exporters)
 //   thermoplace_tests extra      -> optional groups      (*_extra)
 //   thermoplace_tests week2      -> week 2 groups        (anneal, cost, convergence, report)
+//   thermoplace_tests week3      -> week 3 groups        (bstar_subtree, anneal_feasible)
 //   thermoplace_tests <group>    -> one group, e.g. "contour"
 #include <map>
 #include <set>
@@ -13,11 +14,12 @@
 
 int main(int argc, char** argv) {
     std::map<std::string, std::set<std::string>> owners = {
-        {"ismael", {"contour", "bstar", "bstar_extra", "anneal"}},
+        {"ismael", {"contour", "bstar", "bstar_extra", "anneal", "bstar_subtree", "anneal_feasible"}},
         {"eimi", {"parser", "report"}},
         {"jose", {"metrics", "validator", "exporters", "cost", "convergence"}},
         {"extra", {"bstar_extra", "parser_extra", "exporters_extra", "power_extra"}},
         {"week2", {"bstar_extra", "anneal", "cost", "convergence", "report"}},
+        {"week3", {"bstar_subtree", "anneal_feasible"}},
         {"core", {"contour", "bstar", "parser", "metrics", "validator", "exporters", "integration"}},
     };
     std::set<std::string> wanted;
