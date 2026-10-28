@@ -2,7 +2,7 @@
 // OWNER: Jose. Follow docs/MANUAL_JOSE.md. Contract: include/thermoplace/Exporters.hpp
 #include "thermoplace/Exporters.hpp"
 
-#include <algorithm>  // std::max
+#include <algorithm>  // std::min, std::max
 #include <fstream>
 
 #include "thermoplace/Metrics.hpp"
@@ -101,10 +101,97 @@ namespace tp {
 
 bool exportConvergenceSVG(const std::vector<SATracePoint>& trace, const std::string& path,
                           const std::string& title, std::string& err) {
-    // TODO(Jose, week 2): task J9.
-    (void)trace; (void)path; (void)title;
-    err = "exportConvergenceSVG not implemented yet (TODO Jose)";
-    return false;
+    if (trace.empty()) {
+        err = "empty trace, nothing to plot";
+        return false;
+    }
+    std::ofstream out(path);
+    if (!out) {
+        err = "cannot write " + path;
+        return false;
+    }
+
+    // Range of the data: x = temperature step, y = cost (current and best).
+    int minStep = trace.front().step;
+    int maxStep = trace.front().step;
+    double minCost = trace.front().currentCost;
+    double maxCost = trace.front().currentCost;
+    for (const SATracePoint& p : trace) {
+        minStep = std::min(minStep, p.step);
+        maxStep = std::max(maxStep, p.step);
+        minCost = std::min(minCost, std::min(p.currentCost, p.bestCost));
+        maxCost = std::max(maxCost, std::max(p.currentCost, p.bestCost));
+    }
+    // Avoid dividing by zero when all values are equal (or there is one point).
+    double stepRange = (maxStep > minStep) ? double(maxStep - minStep) : 1.0;
+    double costRange = (maxCost > minCost) ? (maxCost - minCost) : 1.0;
+
+    // Plot area inside the picture (left margin is wider for the y labels).
+    const double width = 800.0, height = 500.0;
+    const double left = 80.0, right = 20.0, top = 50.0, bottom = 50.0;
+    const double plotW = width - left - right;
+    const double plotH = height - top - bottom;
+
+    // Data -> pixels. SVG's y axis points DOWN, so a high cost goes near the top.
+    auto px = [&](int step) { return left + (step - minStep) / stepRange * plotW; };
+    auto py = [&](double c) { return top + (maxCost - c) / costRange * plotH; };
+
+    out << "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" << width
+        << "\" height=\"" << height << "\">\n";
+    out << "<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n";
+
+    // Title.
+    out << "<text x=\"" << width / 2 << "\" y=\"" << top / 2
+        << "\" font-size=\"16\" text-anchor=\"middle\">" << title << "</text>\n";
+
+    // Axes: y on the left, x at the bottom.
+    out << "<line x1=\"" << left << "\" y1=\"" << top << "\" x2=\"" << left
+        << "\" y2=\"" << top + plotH << "\" stroke=\"black\"/>\n";
+    out << "<line x1=\"" << left << "\" y1=\"" << top + plotH << "\" x2=\""
+        << left + plotW << "\" y2=\"" << top + plotH << "\" stroke=\"black\"/>\n";
+
+    // Min and max cost written on the y axis, first and last step on the x axis.
+    out << "<text x=\"" << left - 5 << "\" y=\"" << top
+        << "\" font-size=\"11\" text-anchor=\"end\" dominant-baseline=\"middle\">"
+        << maxCost << "</text>\n";
+    out << "<text x=\"" << left - 5 << "\" y=\"" << top + plotH
+        << "\" font-size=\"11\" text-anchor=\"end\" dominant-baseline=\"middle\">"
+        << minCost << "</text>\n";
+    out << "<text x=\"" << left << "\" y=\"" << top + plotH + 15
+        << "\" font-size=\"11\" text-anchor=\"middle\">" << minStep << "</text>\n";
+    out << "<text x=\"" << left + plotW << "\" y=\"" << top + plotH + 15
+        << "\" font-size=\"11\" text-anchor=\"middle\">" << maxStep << "</text>\n";
+
+    // Axis names.
+    out << "<text x=\"" << left + plotW / 2 << "\" y=\"" << height - 10
+        << "\" font-size=\"12\" text-anchor=\"middle\">temperature step</text>\n";
+    out << "<text x=\"15\" y=\"" << top + plotH / 2
+        << "\" font-size=\"12\" text-anchor=\"middle\" transform=\"rotate(-90 15 "
+        << top + plotH / 2 << ")\">cost</text>\n";
+
+    // Line 1: current cost (blue).
+    out << "<polyline fill=\"none\" stroke=\"#3182bd\" stroke-width=\"1.5\" points=\"";
+    for (const SATracePoint& p : trace) out << px(p.step) << "," << py(p.currentCost) << " ";
+    out << "\"/>\n";
+
+    // Line 2: best cost so far (red).
+    out << "<polyline fill=\"none\" stroke=\"#de2d26\" stroke-width=\"2\" points=\"";
+    for (const SATracePoint& p : trace) out << px(p.step) << "," << py(p.bestCost) << " ";
+    out << "\"/>\n";
+
+    // Legend in the top-right corner of the plot.
+    double lx = left + plotW - 150, ly = top + 15;
+    out << "<line x1=\"" << lx << "\" y1=\"" << ly << "\" x2=\"" << lx + 25 << "\" y2=\""
+        << ly << "\" stroke=\"#3182bd\" stroke-width=\"1.5\"/>\n";
+    out << "<text x=\"" << lx + 30 << "\" y=\"" << ly
+        << "\" font-size=\"12\" dominant-baseline=\"middle\">current cost</text>\n";
+    out << "<line x1=\"" << lx << "\" y1=\"" << ly + 20 << "\" x2=\"" << lx + 25 << "\" y2=\""
+        << ly + 20 << "\" stroke=\"#de2d26\" stroke-width=\"2\"/>\n";
+    out << "<text x=\"" << lx + 30 << "\" y=\"" << ly + 20
+        << "\" font-size=\"12\" dominant-baseline=\"middle\">best cost</text>\n";
+
+    out << "</svg>\n";
+    return true;
 }
 
 }  // namespace tp
