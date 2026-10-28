@@ -51,6 +51,10 @@ public:
     // and re-inserts it as left/right child of `newParent` if that slot is
     // free. Returns false if the move is not possible.
     bool moveNode(int node, int newParent, bool asLeftChild);
+    // WEEK 3: detaches `node` TOGETHER WITH ITS WHOLE SUBTREE and hangs it as the
+    // left/right child of `newParent`, if that slot is free and `newParent` is not
+    // inside the subtree. Returns false (tree unchanged) otherwise.
+    bool moveSubtree(int node, int newParent, bool asLeftChild);
 
     // --- Queries -------------------------------------------------------------
     int size() const { return static_cast<int>(nodes_.size()); }
