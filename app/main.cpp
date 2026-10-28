@@ -3,10 +3,12 @@
 //
 // Usage:
 //   thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]
-//               [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--runs-csv FILE]
+//               [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]
+//               [--runs-csv FILE]
 // Examples:
 //   thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000
 //   thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1
+//   thermoplace benchmarks/mcnc/ami49.block --sa --outline-weight 5 --cooling 0.98 --moves-per-temp 2000
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -39,15 +41,18 @@ struct Options {
     double alpha = 0.5;
     double outlineWeight = 0.0;
     double cooling = 0.95;
+    int movesPerTemp = 0; // 0 = automatic (10 x number of blocks), as in SAParams
     std::string runsCsv;  // empty = <out>/runs.csv
 };
 
 void usage() {
     std::cerr << "Usage: thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]\n"
-              << "                   [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--runs-csv FILE]\n"
+              << "                   [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]\n"
+              << "                   [--runs-csv FILE]\n"
               << "  e.g. thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000\n"
               << "       thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1\n"
-              << "  With --sa, --iters is ignored.\n";
+              << "  With --sa, --iters is ignored. With --outline-weight above 0, SA returns the best\n"
+              << "  floorplan that fits the outline, if it found one.\n";
 }
 
 bool parseArgs(int argc, char** argv, Options& o) {
@@ -65,6 +70,7 @@ bool parseArgs(int argc, char** argv, Options& o) {
         else if (a == "--alpha" && (v = next())) o.alpha = std::atof(v);
         else if (a == "--outline-weight" && (v = next())) o.outlineWeight = std::atof(v);
         else if (a == "--cooling" && (v = next())) o.cooling = std::atof(v);
+        else if (a == "--moves-per-temp" && (v = next())) o.movesPerTemp = std::atoi(v);
         else if (a == "--runs-csv" && (v = next())) o.runsCsv = v;
         else { std::cerr << "Unknown or incomplete option: " << a << "\n"; return false; }
     }
@@ -73,6 +79,7 @@ bool parseArgs(int argc, char** argv, Options& o) {
     if (o.alpha < 0.0 || o.alpha > 1.0) { std::cerr << "--alpha must be between 0 and 1\n"; return false; }
     if (o.cooling <= 0.0 || o.cooling >= 1.0) { std::cerr << "--cooling must be between 0 and 1 (exclusive)\n"; return false; }
     if (o.outlineWeight < 0.0) { std::cerr << "--outline-weight cannot be negative\n"; return false; }
+    if (o.movesPerTemp < 0) { std::cerr << "--moves-per-temp cannot be negative (0 = automatic)\n"; return false; }
     return true;
 }
 
@@ -93,7 +100,7 @@ void exportAll(const Design& d, const Options& o, const std::string& tag) {
 
 // One line of the runs table, so random search and SA land in the same CSV and
 // the paper can compare them seed by seed.
-void recordRun(const Design& d, const Options& o, const char* method, double seconds) {
+void recordRun(const Design& d, const Options& o, const std::string& method, double seconds) {
     Metrics m = computeMetrics(d);
     RunRecord r;
     r.benchmark = d.name;
@@ -109,6 +116,16 @@ void recordRun(const Design& d, const Options& o, const char* method, double sec
     std::string err;
     if (appendRunCSV(r, o.runsCsv, err)) std::cout << "  added a line to " << o.runsCsv << "\n";
     else std::cout << "  [skip] runs CSV: " << err << "\n";
+}
+
+// RunRecord has no columns for cooling or moves per temperature, so two SA setups
+// would land in runs.csv under the same "sa" and could not be told apart in the
+// table. Non-default settings go into the method name instead, e.g. "sa_c0.98_m2000".
+std::string saMethodName(const Options& o) {
+    if (o.cooling == 0.95 && o.movesPerTemp == 0) return "sa";
+    char buf[64];
+    std::snprintf(buf, sizeof buf, "sa_c%g_m%d", o.cooling, o.movesPerTemp);
+    return buf;
 }
 
 double secondsSince(std::chrono::steady_clock::time_point t0) {
@@ -162,6 +179,12 @@ int main(int argc, char** argv) {
         SAParams p;
         p.seed = opt.seed;
         p.cooling = opt.cooling;
+        p.movesPerTemp = opt.movesPerTemp;
+        // E8b. Only with an outline penalty does "fits the outline" mean anything to the
+        // cost; then the answer should be the best floorplan that fits, not a slightly
+        // cheaper one that sticks out (Ismael's I9).
+        bool wantFeasible = opt.outlineWeight > 0.0;
+        if (wantFeasible) p.feasible = [](const Design& x) { return computeMetrics(x).fitsOutline; };
 
         auto t0 = std::chrono::steady_clock::now();
         SAResult res = anneal(d, tree, cost, p);
@@ -173,6 +196,10 @@ int main(int argc, char** argv) {
                     res.temperatures, res.moves, res.accepted,
                     res.moves > 0 ? 100.0 * res.accepted / res.moves : 0.0,
                     res.initialCost, res.bestCost, secs, opt.seed, opt.alpha);
+        if (wantFeasible)
+            std::cout << "Fits outline: " << (res.feasibleFound ? "found a floorplan that fits"
+                                                                : "no floorplan that fits was found")
+                      << "\n";
         std::cout << "Validation: " << (rep.ok ? "OK (no overlaps)" : "FAILED") << "\n";
         printMetrics("best", computeMetrics(d));
         exportAll(d, opt, "best");
@@ -184,7 +211,7 @@ int main(int argc, char** argv) {
         if (exportConvergenceSVG(res.trace, base + "_convergence.svg", title, err))
             std::cout << "  wrote " << base << "_convergence.svg\n";
         else std::cout << "  [skip] convergence SVG: " << err << "\n";
-        recordRun(d, opt, "sa", secs);
+        recordRun(d, opt, saMethodName(opt), secs);
         return rep.ok ? 0 : 3;
     }
 
