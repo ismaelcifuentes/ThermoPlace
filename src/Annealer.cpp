@@ -11,7 +11,7 @@ namespace {
 
 // What a move changed, so a rejected move can be undone.
 struct Move {
-    int kind = -1;      // 0 = rotate, 1 = swap, 2 = moveNode
+    int kind = -1;      // 0 = rotate, 1 = swap, 2 = moveNode / moveSubtree
     int rotated = -1;   // block index that was rotated (kind 0)
 };
 
@@ -28,13 +28,22 @@ Move randomMove(Design& d, BStarTree& tree, std::mt19937& rng,
         mv.rotated = tree.node(anyNode(rng)).block;
         d.blocks[mv.rotated].rotated = !d.blocks[mv.rotated].rotated;
     } else if (mv.kind == 1) {                // swap the blocks of two different nodes
-        int a = anyNode(rng), b = anyNode(rng);
+        int a = anyNode(rng);
+        int b = anyNode(rng);
         if (a == b) b = (a + 1) % n;
         tree.swapBlocks(a, b);
-    } else {                                  // move a leaf to a free slot (a few tries)
+    } else {  // move a leaf (I7) or a whole subtree (I10) to a free slot, a few tries
         bool done = false;
         for (int tries = 0; tries < 20 && !done; ++tries) {
-            done = tree.moveNode(anyNode(rng), anyNode(rng), coin(rng));
+            // Draw the random numbers one per line: the order in which C++ evaluates
+            // function arguments is not fixed, and the same seed must give the same
+            // run with g++ (MinGW) and with any other compiler.
+            bool wholeSubtree = coin(rng);
+            int node = anyNode(rng);
+            int newParent = anyNode(rng);
+            bool asLeft = coin(rng);
+            done = wholeSubtree ? tree.moveSubtree(node, newParent, asLeft)
+                                : tree.moveNode(node, newParent, asLeft);
         }
         if (!done) mv.kind = -1;
     }
@@ -44,6 +53,7 @@ Move randomMove(Design& d, BStarTree& tree, std::mt19937& rng,
 }  // namespace
 
 // I8: simulated annealing with Metropolis acceptance and geometric cooling.
+// I9: when params.feasible is set, the returned solution is the best feasible one.
 SAResult anneal(Design& d, BStarTree& tree, const CostFunction& cost, const SAParams& params) {
     SAResult res;
     const int n = tree.size();
@@ -61,6 +71,15 @@ SAResult anneal(Design& d, BStarTree& tree, const CostFunction& cost, const SAPa
     BStarTree bestTree = tree;
     std::vector<bool> bestRot(d.blocks.size());
     for (std::size_t i = 0; i < d.blocks.size(); ++i) bestRot[i] = d.blocks[i].rotated;
+    // Best solution that passes params.feasible (only used when it is set).
+    const bool useFeasible = static_cast<bool>(params.feasible);
+    BStarTree bestFeasTree = tree;
+    std::vector<bool> bestFeasRot = bestRot;
+    double bestFeasCost = 0.0;
+    if (useFeasible && params.feasible(d)) {
+        res.feasibleFound = true;
+        bestFeasCost = current;
+    }
 
     // 1) Initial temperature: try some random moves, average the uphill deltas,
     //    and choose T0 so that an average uphill move is accepted with p0.
@@ -101,6 +120,12 @@ SAResult anneal(Design& d, BStarTree& tree, const CostFunction& cost, const SAPa
                     bestTree = tree;
                     for (std::size_t i = 0; i < d.blocks.size(); ++i) bestRot[i] = d.blocks[i].rotated;
                 }
+                if (useFeasible && (!res.feasibleFound || c < bestFeasCost) && params.feasible(d)) {
+                    res.feasibleFound = true;
+                    bestFeasCost = c;
+                    bestFeasTree = tree;
+                    for (std::size_t i = 0; i < d.blocks.size(); ++i) bestFeasRot[i] = d.blocks[i].rotated;
+                }
             } else if (mv.rotated >= 0) {
                 d.blocks[mv.rotated].rotated = !d.blocks[mv.rotated].rotated;  // undo rotation
             }
@@ -119,6 +144,10 @@ SAResult anneal(Design& d, BStarTree& tree, const CostFunction& cost, const SAPa
     }
 
     // 3) Return the best solution: restore its tree, rotations and positions.
+    if (res.feasibleFound) {
+        bestTree = bestFeasTree;
+        bestRot = bestFeasRot;
+    }
     tree = bestTree;
     for (std::size_t i = 0; i < d.blocks.size(); ++i) d.blocks[i].rotated = bestRot[i];
     tree.pack(d);
