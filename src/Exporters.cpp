@@ -4,6 +4,7 @@
 
 #include <algorithm>  // std::min, std::max
 #include <fstream>
+#include <iomanip>    // std::fixed, std::setprecision
 
 #include "thermoplace/Metrics.hpp"
 
@@ -18,32 +19,46 @@ bool exportSVG(const Design& d, const std::string& path, std::string& err) {
 
     Metrics m = computeMetrics(d);
 
-    // Scale the chip so its longest side is 800 pixels, with a margin around it.
+    // The drawing must hold both the chip and the fixed outline (if there is one).
+    double frameW = std::max(m.chipW, d.outlineW);
+    double frameH = std::max(m.chipH, d.outlineH);
+
+    // Scale the frame so its longest side is 800 pixels, with a margin around it.
     const double pad = 40.0;
-    double longest = std::max(m.chipW, m.chipH);
+    double longest = std::max(frameW, frameH);
     double s = (longest > 0) ? 800.0 / longest : 1.0;
-    double svgW = m.chipW * s + 2 * pad;
-    double svgH = m.chipH * s + 2 * pad;
+    double svgW = frameW * s + 2 * pad;
+    double svgH = frameH * s + 2 * pad;
 
     out << "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" << svgW
         << "\" height=\"" << svgH << "\">\n";
     out << "<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n";
 
-    // Title: design name, chip area and dead space.
+    // Title: design name, chip area, dead space and wirelength.
+    // std::fixed avoids scientific notation like 1.35808e+06 in the figure.
+    out << std::fixed << std::setprecision(0);
     out << "<text x=\"" << pad << "\" y=\"" << pad / 2 << "\" font-size=\"14\">"
-        << d.name << "  area=" << m.chipArea << "  dead space="
-        << m.deadSpacePct << "%</text>\n";
+        << d.name << "  area=" << m.chipArea << "  HPWL=" << m.hpwl
+        << std::setprecision(2) << "  dead space=" << m.deadSpacePct << "%</text>\n";
 
-    // Chip outline (dashed line).
-    out << "<rect x=\"" << pad << "\" y=\"" << pad << "\" width=\"" << m.chipW * s
-        << "\" height=\"" << m.chipH * s
+    // Chip bounding box (black dashed line). In SVG the bottom of the frame
+    // is at pad + frameH * s, so a box of height H starts at that minus H.
+    out << "<rect x=\"" << pad << "\" y=\"" << pad + (frameH - m.chipH) * s
+        << "\" width=\"" << m.chipW * s << "\" height=\"" << m.chipH * s
         << "\" fill=\"none\" stroke=\"black\" stroke-dasharray=\"4\"/>\n";
+
+    // Fixed outline (red dashed line), only when the benchmark gives one.
+    if (d.outlineW > 0 && d.outlineH > 0) {
+        out << "<rect x=\"" << pad << "\" y=\"" << pad + (frameH - d.outlineH) * s
+            << "\" width=\"" << d.outlineW * s << "\" height=\"" << d.outlineH * s
+            << "\" fill=\"none\" stroke=\"red\" stroke-dasharray=\"8 4\"/>\n";
+    }
 
     // One rectangle and one label per block.
     for (const Block& b : d.blocks) {
         double xs = pad + b.x * s;
-        // SVG's y axis points DOWN, so we flip it: top edge = chipH - (y + h).
-        double ys = pad + (m.chipH - (b.y + b.h())) * s;
+        // SVG's y axis points DOWN, so we flip it: top edge = frameH - (y + h).
+        double ys = pad + (frameH - (b.y + b.h())) * s;
         double ws = b.w() * s;
         double hs = b.h() * s;
 
@@ -151,6 +166,8 @@ bool exportConvergenceSVG(const std::vector<SATracePoint>& trace, const std::str
         << left + plotW << "\" y2=\"" << top + plotH << "\" stroke=\"black\"/>\n";
 
     // Min and max cost written on the y axis, first and last step on the x axis.
+    // Three decimals are enough for a normalized cost (e.g. 0.331 instead of 0.330514).
+    out << std::fixed << std::setprecision(3);
     out << "<text x=\"" << left - 5 << "\" y=\"" << top
         << "\" font-size=\"11\" text-anchor=\"end\" dominant-baseline=\"middle\">"
         << maxCost << "</text>\n";
