@@ -7,9 +7,14 @@
 namespace tp {
 
 void assignSyntheticPower(Design& d, unsigned seed, double minDensity, double maxDensity) {
-    // TODO(Jose, EXTRA): task J7. Use std::mt19937 with `seed` and
-    // std::uniform_real_distribution<double>(minDensity, maxDensity).
-    (void)d; (void)seed; (void)minDensity; (void)maxDensity;
+    // Same seed -> same sequence of random numbers -> same powers every run.
+    std::mt19937 rng(seed);
+    std::uniform_real_distribution<double> density(minDensity, maxDensity);
+
+    // Each block gets its own random density (W per unit^2), times its area.
+    for (Block& b : d.blocks) {
+        b.power = density(rng) * b.area();
+    }
 }
 
 double totalPower(const Design& d) {
