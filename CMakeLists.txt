@@ -24,6 +24,7 @@ add_library(thermoplace_core
   src/Annealer.cpp      # Ismael (week 2)
   src/Cost.cpp          # Jose (week 2)
   src/Report.cpp        # Eimi (week 2)
+  src/Thermal.cpp       # Ismael (week 4)
 )
 target_include_directories(thermoplace_core PUBLIC include)
 
@@ -40,6 +41,7 @@ add_executable(thermoplace_tests
   tests/test_integration.cpp
   tests/test_week2.cpp
   tests/test_week3.cpp
+  tests/test_week4.cpp
 )
 target_link_libraries(thermoplace_tests PRIVATE thermoplace_core)
 target_compile_definitions(thermoplace_tests PRIVATE

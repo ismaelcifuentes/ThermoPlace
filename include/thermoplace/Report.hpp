@@ -31,12 +31,14 @@ struct RunRecord {
     double hpwl = 0.0;
     bool fitsOutline = false;
     double seconds = 0.0;     // run time
+    double maxTempC = 0.0;    // WEEK 4: peak temperature of the result (0 = not computed)
 };
 
 // Appends one line to `path`. If the file does not exist yet or is empty, it
 // first writes the exact header:
-//   benchmark,method,seed,alpha,outline_weight,chip_area,dead_space_pct,hpwl,fits_outline,seconds
-// fits_outline is written as 1 or 0.
+//   benchmark,method,seed,alpha,outline_weight,chip_area,dead_space_pct,hpwl,fits_outline,seconds,max_temp_c
+// fits_outline is written as 1 or 0; max_temp_c is 0 when no thermal run was done.
+// A runs.csv written before week 4 has one column less: start a new file.
 bool appendRunCSV(const RunRecord& r, const std::string& path, std::string& err);
 
 }  // namespace tp
