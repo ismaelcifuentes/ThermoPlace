@@ -37,6 +37,11 @@ struct ThermalParams {
     double omega = 0.0;             // SOR factor: 1 = plain Gauss-Seidel,
                                     // 0 = automatic, 2 / (1 + sin(pi / (gridN + 1)))
     double tolerance = 1e-6;        // stop when the largest change in a sweep is below this (K)
+    // WEEK 5: the die is the FIXED OUTLINE when the benchmark has one (and the
+    // chip fits in it): the empty part of the die still spreads heat. Without
+    // this, a bigger bounding box always looks cooler (more heat-sink area), and
+    // SA would "cool" the chip just by spreading the blocks apart.
+    bool dieIsOutline = true;
 };
 
 struct ThermalMap {
@@ -54,14 +59,51 @@ struct ThermalMap {
     double powerAt(int row, int col) const { return power[row * n + col]; }
 };
 
-// Spreads Block::power over an n x n grid that covers the chip bounding box
-// (0..chipW, 0..chipH). A block puts into each cell a share of its power equal
+// Spreads Block::power over an n x n grid that covers the die: the chip bounding
+// box (0..chipW, 0..chipH), enlarged to the fixed outline when dieIsOutline is
+// true and the design has one. A block puts into each cell a share of its power equal
 // to (overlap area / block area), so the grid always adds up to totalPower(d).
 // cellW and cellH receive the cell size in benchmark units.
-std::vector<double> powerGrid(const Design& d, int n, double& cellW, double& cellH);
+std::vector<double> powerGrid(const Design& d, int n, double& cellW, double& cellH,
+                              bool dieIsOutline = true);
 
 // Builds the power grid and solves the steady-state temperatures.
 // The design must be packed (positions computed) and have Block::power set.
 ThermalMap solveThermal(const Design& d, const ThermalParams& p = ThermalParams());
+
+// Same, but Gauss-Seidel starts from `initialTemp` (n*n values, row-major)
+// instead of the ambient temperature. If the size does not match, it is ignored.
+ThermalMap solveThermal(const Design& d, const ThermalParams& p,
+                        const std::vector<double>& initialTemp);
+
+// WEEK 5: average temperature of each block (one value per Design::blocks entry,
+// same order), weighting every cell by the area the block covers in it. HotSpot
+// in "block mode" reports one temperature per block, so this is what we compare.
+std::vector<double> blockTemperatures(const Design& d, const ThermalMap& map);
+
+// WEEK 5: peak temperature for simulated annealing, where it is computed for
+// every move. It reuses the previous temperature map as the starting point
+// (warm start): two consecutive SA floorplans are almost the same, so the
+// solver needs far fewer sweeps than starting from the ambient every time.
+class ThermalEvaluator {
+public:
+    explicit ThermalEvaluator(const ThermalParams& p = ThermalParams()) : params_(p) {}
+
+    // Peak temperature (C) of a packed design with Block::power set.
+    double maxTemp(const Design& d);
+
+    // Forget the previous map (the next call starts from the ambient).
+    void reset() { last_.clear(); }
+
+    int calls() const { return calls_; }
+    long totalIterations() const { return totalIterations_; }
+    const ThermalParams& params() const { return params_; }
+
+private:
+    ThermalParams params_;
+    std::vector<double> last_;   // temperatures of the previous call
+    int calls_ = 0;
+    long totalIterations_ = 0;
+};
 
 }  // namespace tp

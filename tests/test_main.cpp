@@ -7,6 +7,7 @@
 //   thermoplace_tests week2      -> week 2 groups        (anneal, cost, convergence, report)
 //   thermoplace_tests week3      -> week 3 groups        (bstar_subtree, anneal_feasible)
 //   thermoplace_tests week4      -> week 4 groups        (thermal, thermal_svg, power/exporters extra, report)
+//   thermoplace_tests week5      -> week 5 groups        (thermal_sa, cost_thermal)
 //   thermoplace_tests <group>    -> one group, e.g. "contour"
 #include <map>
 #include <set>
@@ -15,13 +16,14 @@
 
 int main(int argc, char** argv) {
     std::map<std::string, std::set<std::string>> owners = {
-        {"ismael", {"contour", "bstar", "bstar_extra", "anneal", "bstar_subtree", "anneal_feasible", "thermal"}},
+        {"ismael", {"contour", "bstar", "bstar_extra", "anneal", "bstar_subtree", "anneal_feasible", "thermal", "thermal_sa"}},
         {"eimi", {"parser", "report"}},
-        {"jose", {"metrics", "validator", "exporters", "cost", "convergence", "thermal_svg", "power_extra", "exporters_extra"}},
+        {"jose", {"metrics", "validator", "exporters", "cost", "convergence", "thermal_svg", "power_extra", "exporters_extra", "cost_thermal"}},
         {"extra", {"bstar_extra", "parser_extra", "exporters_extra", "power_extra"}},
         {"week2", {"bstar_extra", "anneal", "cost", "convergence", "report"}},
         {"week3", {"bstar_subtree", "anneal_feasible"}},
         {"week4", {"thermal", "thermal_svg", "power_extra", "exporters_extra", "report"}},
+        {"week5", {"thermal_sa", "cost_thermal"}},
         {"core", {"contour", "bstar", "parser", "metrics", "validator", "exporters", "integration"}},
     };
     std::set<std::string> wanted;

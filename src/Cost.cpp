@@ -44,4 +44,11 @@ double computeCost(const Metrics& m, const Design& d, const CostWeights& w,
     return cost;
 }
 
+double computeCost(const Metrics& m, const Design& d, const CostWeights& w,
+                   const CostNorm& norm, double tempRise) {
+    // TODO(Jose, week 5): task J14.
+    (void)m; (void)d; (void)w; (void)norm; (void)tempRise;
+    return -1.0;
+}
+
 }  // namespace tp
