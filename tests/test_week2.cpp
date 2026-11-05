@@ -264,7 +264,7 @@ TEST(report, runs_csv_appends_with_one_header) {
     std::vector<std::string> lines = readLines(path);
     REQUIRE(lines.size() == 3);
     CHECK_EQ(lines[0], std::string("benchmark,method,seed,alpha,outline_weight,chip_area,"
-                                   "dead_space_pct,hpwl,fits_outline,seconds"));
+                                   "dead_space_pct,hpwl,fits_outline,seconds,max_temp_c"));
     CHECK(lines[1].rfind("ami33,sa,3,", 0) == 0);
     CHECK(lines[2].rfind("ami33,sa,4,", 0) == 0);
     CHECK(lines[1].find(",1,") != std::string::npos);  // fits_outline = 1

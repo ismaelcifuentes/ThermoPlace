@@ -212,3 +212,15 @@ bool exportConvergenceSVG(const std::vector<SATracePoint>& trace, const std::str
 }
 
 }  // namespace tp
+
+namespace tp {
+
+bool exportThermalSVG(const ThermalMap& map, const std::string& path,
+                      const std::string& title, std::string& err) {
+    // TODO(Jose, week 4): task J12.
+    (void)map; (void)path; (void)title;
+    err = "exportThermalSVG not implemented yet (TODO Jose)";
+    return false;
+}
+
+}  // namespace tp

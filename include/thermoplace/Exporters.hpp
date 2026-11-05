@@ -8,6 +8,7 @@
 
 #include "thermoplace/Annealer.hpp"
 #include "thermoplace/Design.hpp"
+#include "thermoplace/Thermal.hpp"
 
 namespace tp {
 
@@ -37,5 +38,12 @@ bool exportCSV(const Design& d, const std::string& path, std::string& err);
 // and a title. Returns false if the trace is empty or the file cannot be opened.
 bool exportConvergenceSVG(const std::vector<SATracePoint>& trace, const std::string& path,
                           const std::string& title, std::string& err);
+
+// WEEK 4: heat map of a ThermalMap. One <rect class="cell"> per grid cell,
+// coloured from blue (coolest) to red (hottest), row 0 at the BOTTOM of the
+// picture, plus a colour scale with min and max temperature and the title.
+// Returns false if the map is empty (n == 0) or the file cannot be opened.
+bool exportThermalSVG(const ThermalMap& map, const std::string& path,
+                      const std::string& title, std::string& err);
 
 }  // namespace tp

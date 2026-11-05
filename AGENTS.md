@@ -8,13 +8,13 @@ parallel on separate files. Follow these rules strictly.
 
 The human is Ismael, Eimi or Jose. If they did not say, ask. Then read their manual:
 `docs/MANUAL_ISMAEL.md`, `docs/MANUAL_EIMI.md` or `docs/MANUAL_JOSE.md`,
-and for the current week `docs/SEMANA2.md`.
+and for the current week the newest `docs/SEMANA<N>.md`.
 
 ## 2. Only edit the files of that person
 
 | Person | May edit |
 |---|---|
-| Ismael | `src/Contour.cpp`, `src/BStarTree.cpp`, `src/Annealer.cpp` |
+| Ismael | `src/Contour.cpp`, `src/BStarTree.cpp`, `src/Annealer.cpp`, `src/Thermal.cpp` |
 | Eimi   | `src/Parser.cpp`, `src/Report.cpp`, `app/main.cpp`, `README.md`, `docs/REVISION1.md` |
 | Jose   | `src/Metrics.cpp`, `src/Validator.cpp`, `src/Exporters.cpp`, `src/Power.cpp`, `src/Cost.cpp` |
 
