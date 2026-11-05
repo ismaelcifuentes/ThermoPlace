@@ -54,11 +54,11 @@ bool appendRunCSV(const RunRecord& r, const std::string& path, std::string& err)
 
     if (needsHeader) {
         out << "benchmark,method,seed,alpha,outline_weight,chip_area,dead_space_pct,"
-               "hpwl,fits_outline,seconds\n";
+               "hpwl,fits_outline,seconds,max_temp_c\n";
     }
     out << r.benchmark << ',' << r.method << ',' << r.seed << ',' << r.alpha << ','
         << r.outlineWeight << ',' << r.chipArea << ',' << r.deadSpacePct << ',' << r.hpwl
-        << ',' << (r.fitsOutline ? 1 : 0) << ',' << r.seconds << '\n';
+        << ',' << (r.fitsOutline ? 1 : 0) << ',' << r.seconds << ',' << r.maxTempC << '\n';
     return true;
 }
 
