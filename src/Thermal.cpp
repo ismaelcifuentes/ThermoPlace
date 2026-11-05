@@ -18,12 +18,17 @@ double overlap(double a1, double a2, double b1, double b2) {
 
 // I11: each block shares its power among the cells it covers, in proportion
 // to the covered area. Only the cells under the block are visited.
-std::vector<double> powerGrid(const Design& d, int n, double& cellW, double& cellH) {
+std::vector<double> powerGrid(const Design& d, int n, double& cellW, double& cellH,
+                              bool dieIsOutline) {
     std::vector<double> grid(n > 0 ? n * n : 0, 0.0);
     double chipW = 0.0, chipH = 0.0;
     for (const Block& b : d.blocks) {
         chipW = std::max(chipW, b.x + b.w());
         chipH = std::max(chipH, b.y + b.h());
+    }
+    if (dieIsOutline && d.outlineW > 0.0 && d.outlineH > 0.0) {  // I13: die = fixed outline
+        chipW = std::max(chipW, d.outlineW);
+        chipH = std::max(chipH, d.outlineH);
     }
     cellW = (n > 0) ? chipW / n : 0.0;
     cellH = (n > 0) ? chipH / n : 0.0;
@@ -49,13 +54,20 @@ std::vector<double> powerGrid(const Design& d, int n, double& cellW, double& cel
     return grid;
 }
 
-// I11: Gauss-Seidel with over-relaxation (SOR) on the heat-balance equation of every cell (see the header).
 ThermalMap solveThermal(const Design& d, const ThermalParams& p) {
+    return solveThermal(d, p, std::vector<double>());
+}
+
+// I11: Gauss-Seidel with over-relaxation (SOR) on the heat-balance equation of every cell (see the header).
+// I12: optional starting temperatures (warm start).
+ThermalMap solveThermal(const Design& d, const ThermalParams& p,
+                        const std::vector<double>& initialTemp) {
     ThermalMap map;
     const int n = p.gridN;
     map.n = n;
-    map.power = powerGrid(d, n, map.cellW, map.cellH);
-    map.temp.assign(map.power.size(), p.ambientC);
+    map.power = powerGrid(d, n, map.cellW, map.cellH, p.dieIsOutline);
+    if (initialTemp.size() == map.power.size()) map.temp = initialTemp;
+    else map.temp.assign(map.power.size(), p.ambientC);
     if (map.power.empty() || map.cellW <= 0.0 || map.cellH <= 0.0) {
         map.maxTemp = map.avgTemp = p.ambientC;
         map.converged = true;
@@ -105,6 +117,40 @@ ThermalMap solveThermal(const Design& d, const ThermalParams& p) {
     }
     map.avgTemp = sum / map.temp.size();
     return map;
+}
+
+// I14: area-weighted average temperature of the cells under each block.
+std::vector<double> blockTemperatures(const Design& d, const ThermalMap& map) {
+    std::vector<double> out(d.blocks.size(), 0.0);
+    const int n = map.n;
+    if (n <= 0 || map.cellW <= 0.0 || map.cellH <= 0.0) return out;
+    for (std::size_t i = 0; i < d.blocks.size(); ++i) {
+        const Block& b = d.blocks[i];
+        int c0 = std::max(0, static_cast<int>(b.x / map.cellW));
+        int c1 = std::min(n - 1, static_cast<int>((b.x + b.w()) / map.cellW));
+        int r0 = std::max(0, static_cast<int>(b.y / map.cellH));
+        int r1 = std::min(n - 1, static_cast<int>((b.y + b.h()) / map.cellH));
+        double weighted = 0.0, covered = 0.0;
+        for (int r = r0; r <= r1; ++r) {
+            double oy = overlap(b.y, b.y + b.h(), r * map.cellH, (r + 1) * map.cellH);
+            for (int c = c0; c <= c1; ++c) {
+                double a = oy * overlap(b.x, b.x + b.w(), c * map.cellW, (c + 1) * map.cellW);
+                weighted += a * map.tempAt(r, c);
+                covered += a;
+            }
+        }
+        out[i] = (covered > 0.0) ? weighted / covered : 0.0;
+    }
+    return out;
+}
+
+// I12: warm-started peak temperature for simulated annealing.
+double ThermalEvaluator::maxTemp(const Design& d) {
+    ThermalMap m = solveThermal(d, params_, last_);
+    last_ = m.temp;
+    ++calls_;
+    totalIterations_ += m.iterations;
+    return m.maxTemp;
 }
 
 }  // namespace tp
