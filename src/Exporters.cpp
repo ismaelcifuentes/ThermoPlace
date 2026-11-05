@@ -97,17 +97,42 @@ bool exportHotSpotFLP(const Design& d, const std::string& path, double unitToMet
 }
 
 bool exportPTrace(const Design& d, const std::string& path, std::string& err) {
-    // TODO(Jose, EXTRA): task J7.
-    (void)d; (void)path;
-    err = "exportPTrace not implemented yet (TODO Jose, extra)";
-    return false;
+    std::ofstream out(path);
+    if (!out) {
+        err = "cannot write " + path;
+        return false;
+    }
+
+    // Line 1: block names, separated by tabs (HotSpot matches them with the .flp).
+    for (std::size_t i = 0; i < d.blocks.size(); ++i) {
+        if (i > 0) out << "\t";
+        out << d.blocks[i].name;
+    }
+    out << "\n";
+
+    // Line 2: the power of each block in watts, in the same order.
+    for (std::size_t i = 0; i < d.blocks.size(); ++i) {
+        if (i > 0) out << "\t";
+        out << d.blocks[i].power;
+    }
+    out << "\n";
+    return true;
 }
 
 bool exportCSV(const Design& d, const std::string& path, std::string& err) {
-    // TODO(Jose, EXTRA): task J6.
-    (void)d; (void)path;
-    err = "exportCSV not implemented yet (TODO Jose, extra)";
-    return false;
+    std::ofstream out(path);
+    if (!out) {
+        err = "cannot write " + path;
+        return false;
+    }
+
+    // One row per block. w and h are the PLACED size (already rotated).
+    out << "name,x,y,w,h,rotated,power\n";
+    for (const Block& b : d.blocks) {
+        out << b.name << "," << b.x << "," << b.y << "," << b.w() << "," << b.h()
+            << "," << (b.rotated ? 1 : 0) << "," << b.power << "\n";
+    }
+    return true;
 }
 
 }  // namespace tp
@@ -215,12 +240,102 @@ bool exportConvergenceSVG(const std::vector<SATracePoint>& trace, const std::str
 
 namespace tp {
 
+// Colour for a value t between 0 (coolest) and 1 (hottest), as "rgb(r,g,b)".
+// It goes blue -> cyan -> green -> yellow -> red, in 4 equal steps.
+static std::string heatColor(double t) {
+    t = std::max(0.0, std::min(1.0, t));
+    double r = 0, g = 0, b = 0;
+    if (t < 0.25) {         // blue -> cyan: green goes up
+        b = 1; g = t / 0.25;
+    } else if (t < 0.5) {   // cyan -> green: blue goes down
+        g = 1; b = 1 - (t - 0.25) / 0.25;
+    } else if (t < 0.75) {  // green -> yellow: red goes up
+        g = 1; r = (t - 0.5) / 0.25;
+    } else {                // yellow -> red: green goes down
+        r = 1; g = 1 - (t - 0.75) / 0.25;
+    }
+    return "rgb(" + std::to_string(static_cast<int>(r * 255)) + "," +
+           std::to_string(static_cast<int>(g * 255)) + "," +
+           std::to_string(static_cast<int>(b * 255)) + ")";
+}
+
 bool exportThermalSVG(const ThermalMap& map, const std::string& path,
                       const std::string& title, std::string& err) {
-    // TODO(Jose, week 4): task J12.
-    (void)map; (void)path; (void)title;
-    err = "exportThermalSVG not implemented yet (TODO Jose)";
-    return false;
+    if (map.n == 0 || map.temp.empty()) {
+        err = "empty thermal map, nothing to draw";
+        return false;
+    }
+    std::ofstream out(path);
+    if (!out) {
+        err = "cannot write " + path;
+        return false;
+    }
+
+    // 1. Coolest and hottest cell: they are the two ends of the colour scale.
+    double minT = map.temp[0];
+    double maxT = map.temp[0];
+    for (double t : map.temp) {
+        minT = std::min(minT, t);
+        maxT = std::max(maxT, t);
+    }
+    // A uniform map (all cells equal) would divide by zero below.
+    double range = (maxT > minT) ? (maxT - minT) : 1.0;
+
+    // 2. Size of the picture: the longest side of the chip is 600 pixels.
+    //    Cells keep the chip's proportions (they are not always square).
+    double chipW = map.n * map.cellW;
+    double chipH = map.n * map.cellH;
+    double longest = std::max(chipW, chipH);
+    double s = (longest > 0) ? 600.0 / longest : 1.0;
+    double cw = (longest > 0) ? map.cellW * s : 600.0 / map.n;
+    double ch = (longest > 0) ? map.cellH * s : 600.0 / map.n;
+    const double left = 40.0, top = 50.0;
+    double mapW = map.n * cw;
+    double mapH = map.n * ch;
+    double svgW = left + mapW + 120.0;  // room on the right for the colour scale
+    double svgH = top + mapH + 40.0;
+
+    out << std::fixed << std::setprecision(2);
+    out << "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" << svgW
+        << "\" height=\"" << svgH << "\">\n";
+    out << "<rect width=\"100%\" height=\"100%\" fill=\"white\"/>\n";
+    out << "<text x=\"" << left << "\" y=\"30\" font-size=\"16\">" << title
+        << "  Tmax=" << map.maxTemp << " C  Tavg=" << map.avgTemp << " C</text>\n";
+
+    // 3. One rectangle per cell. Row 0 is the BOTTOM of the chip, but SVG's
+    //    y axis points down, so row r is drawn (n - 1 - r) cells from the top.
+    for (int row = 0; row < map.n; ++row) {
+        for (int col = 0; col < map.n; ++col) {
+            double x = left + col * cw;
+            double y = top + (map.n - 1 - row) * ch;
+            double t = (map.tempAt(row, col) - minT) / range;
+            // crispEdges avoids thin white seams between neighbouring cells.
+            out << "<rect class=\"cell\" shape-rendering=\"crispEdges\" x=\"" << x
+                << "\" y=\"" << y << "\" width=\"" << cw << "\" height=\"" << ch
+                << "\" fill=\"" << heatColor(t) << "\"/>\n";
+        }
+    }
+    // Thin border around the chip.
+    out << "<rect x=\"" << left << "\" y=\"" << top << "\" width=\"" << mapW << "\" height=\""
+        << mapH << "\" fill=\"none\" stroke=\"black\"/>\n";
+
+    // 4. Colour scale: a vertical gradient, red (hot) at the top, blue at the bottom.
+    double barX = left + mapW + 20.0;
+    out << "<defs><linearGradient id=\"heat\" x1=\"0\" y1=\"1\" x2=\"0\" y2=\"0\">\n";
+    for (int i = 0; i <= 4; ++i) {
+        out << "<stop offset=\"" << i * 25 << "%\" stop-color=\"" << heatColor(i / 4.0)
+            << "\"/>\n";
+    }
+    out << "</linearGradient></defs>\n";
+    out << "<rect x=\"" << barX << "\" y=\"" << top << "\" width=\"20\" height=\"" << mapH
+        << "\" fill=\"url(#heat)\" stroke=\"black\"/>\n";
+    out << "<text x=\"" << barX + 26 << "\" y=\"" << top + 10 << "\" font-size=\"12\">"
+        << maxT << " C</text>\n";
+    out << "<text x=\"" << barX + 26 << "\" y=\"" << top + mapH << "\" font-size=\"12\">"
+        << minT << " C</text>\n";
+
+    out << "</svg>\n";
+    return true;
 }
 
 }  // namespace tp
