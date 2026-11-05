@@ -35,7 +35,7 @@ Entrega final: **jueves 3 de diciembre de 2026**. Meta interna: **todo terminado
 | 2 | 15–21 oct | `moveNode` (I7) + motor de **simulated annealing** (temperatura, enfriamiento, aceptación de Metropolis) | Opciones de línea de comandos para SA, salida CSV por corrida | Función de costo: área + α·HPWL normalizados; gráficas de convergencia |
 | 3 | 22–28 oct | Ajuste de SA (perturbaciones, criterio de parada) | **Comparación con resultados publicados** de ami33/ami49 (tabla) | Gráficas de floorplans finales; revisar que HPWL coincida con la definición de los papers |
 | 4 | 4–10 nov | **Modelo térmico en matriz** (I11, hecho): grilla N×N, potencia por celda, Gauss-Seidel con SOR → temperatura máxima | **E11** opción `--thermal` en el programa, `max_temp_c` en `runs.csv` | **J7** potencia sintética + `.ptrace`, **J12** mapa de calor SVG, **J13** instalar HotSpot |
-| 5 | 11–17 nov | Temperatura dentro del costo de SA | Barrido del peso térmico → **frente de Pareto área vs. Tmax** | **Validación del modelo rápido contra HotSpot** (error y tiempo según tamaño de grilla) |
+| 5 | 11–17 nov | Temperatura dentro del costo de SA (I12–I14, hecho antes) | **E12** opciones térmicas; **E13** barrido del peso térmico → **frente de Pareto área vs. Tmax** | **J14** costo térmico; **J15** validación del modelo rápido contra HotSpot (error y tiempo según tamaño de grilla) |
 | 6 | 18–25 nov | Informe: sección *Method* | **E6** GSRC n100–n300 (escalabilidad); informe: *Introduction*, *Related work*, edición final | Figuras; informe: *Experiments*, *Results* |
 | margen | 26 nov–3 dic | Revisión final, README, PDF y videos finales, **entrega el 3 de diciembre** | igual | igual |
 
