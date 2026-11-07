@@ -66,10 +66,18 @@ ThermalMap solveThermal(const Design& d, const ThermalParams& p,
     const int n = p.gridN;
     map.n = n;
     map.power = powerGrid(d, n, map.cellW, map.cellH, p.dieIsOutline);
+
+    // I15: all the power leaves through the package, so its node sits at a fixed
+    // temperature above the ambient. The cells see it instead of the ambient.
+    double totalPower = 0.0;
+    for (double q : map.power) totalPower += q;
+    map.packageTemp = p.ambientC + p.packageR * totalPower;
+    const double sinkC = map.packageTemp;
+
     if (initialTemp.size() == map.power.size()) map.temp = initialTemp;
-    else map.temp.assign(map.power.size(), p.ambientC);
+    else map.temp.assign(map.power.size(), sinkC);
     if (map.power.empty() || map.cellW <= 0.0 || map.cellH <= 0.0) {
-        map.maxTemp = map.avgTemp = p.ambientC;
+        map.maxTemp = map.avgTemp = sinkC;
         map.converged = true;
         return map;
     }
@@ -80,7 +88,7 @@ ThermalMap solveThermal(const Design& d, const ThermalParams& p,
     const double h = map.cellH * p.unitToMeters;
     const double gx = p.siliconK * p.dieThickness * h / w;  // left-right neighbours
     const double gy = p.siliconK * p.dieThickness * w / h;  // down-up neighbours
-    const double gv = p.heatSinkH * w * h;                 // cell -> ambient
+    const double gv = p.heatSinkH * w * h;                 // cell -> package node
     const double pi = 3.14159265358979323846;
     const double omega = (p.omega > 0.0) ? p.omega : 2.0 / (1.0 + std::sin(pi / (n + 1)));
 
@@ -90,7 +98,7 @@ ThermalMap solveThermal(const Design& d, const ThermalParams& p,
             for (int c = 0; c < n; ++c) {
                 // Heat balance solved for T: weighted average of the neighbours
                 // and the ambient, plus the cell's own power.
-                double num = map.power[r * n + c] + gv * p.ambientC;
+                double num = map.power[r * n + c] + gv * sinkC;
                 double den = gv;
                 if (c > 0)     { num += gx * map.temp[r * n + c - 1];   den += gx; }
                 if (c < n - 1) { num += gx * map.temp[r * n + c + 1];   den += gx; }

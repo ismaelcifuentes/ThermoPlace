@@ -16,8 +16,18 @@
 // To converge faster we use over-relaxation (SOR): each update moves the cell
 // a bit PAST the Gauss-Seidel value, T = T + omega * (T_gs - T), 1 < omega < 2.
 //
+// Package (week 5, I15). HotSpot showed that one per-area heat-sink value cannot
+// fit dies of very different sizes: its spreader and sink are fixed and much
+// larger than the die. So the heat path below the die has two parts in series:
+//   * per area (die -> spreader), conductance heatSinkH * cell area, to
+//   * one common node at T_pkg = Tamb + packageR * P_total (spreader, sink and
+//     air, lumped; ALL the power goes through it at steady state).
+// In the cell equation above, Tamb is therefore replaced by T_pkg.
+// With packageR = 0 this is the original one-parameter model.
+//
 // This is the "simple model" of our research question; week 5 compares it with
-// HotSpot (a detailed, validated simulator) and tunes `heatSinkH` against it.
+// HotSpot (a detailed, validated simulator) and calibrates heatSinkH and
+// packageR against it (docs/VALIDATION.md).
 #pragma once
 
 #include <vector>
@@ -30,9 +40,11 @@ struct ThermalParams {
     int gridN = 32;                 // cells per side
     double unitToMeters = 1e-6;     // benchmark units -> meters (MCNC is in micrometers)
     double ambientC = 45.0;         // ambient temperature (HotSpot default, in C)
-    double siliconK = 100.0;        // thermal conductivity of silicon, W/(m*K) (HotSpot default)
+    double siliconK = 130.0;        // W/(m*K): -k_chip of HotSpot v7.0 example/template configs
     double dieThickness = 0.15e-3;  // m (HotSpot default t_chip)
-    double heatSinkH = 4.0e4;       // W/(m^2*K): package + heat sink seen from each m^2 of die
+    // PROVISIONAL until J15 recalibrates them against HotSpot (docs/VALIDATION.md):
+    double heatSinkH = 1.15e5;      // W/(m^2*K): die -> spreader, per m^2 of die
+    double packageR = 0.28;         // K/W: spreader + heat sink + air, shared by the whole die
     int maxIterations = 20000;      // safety stop for Gauss-Seidel
     double omega = 0.0;             // SOR factor: 1 = plain Gauss-Seidel,
                                     // 0 = automatic, 2 / (1 + sin(pi / (gridN + 1)))
@@ -52,6 +64,7 @@ struct ThermalMap {
     std::vector<double> temp;   // degrees C per cell, same layout
     double maxTemp = 0.0;
     double avgTemp = 0.0;
+    double packageTemp = 0.0;   // T_pkg = Tamb + packageR * total power (C)
     int iterations = 0;         // Gauss-Seidel sweeps done
     bool converged = false;     // true if it stopped because of `tolerance`
 
