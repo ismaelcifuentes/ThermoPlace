@@ -40,15 +40,23 @@ double computeCost(const Metrics& m, const Design& d, const CostWeights& w,
     // Extra penalty when the chip does not fit the fixed outline.
     cost += w.outline * outlinePenalty(m, d);
 
-    // w.thermal is used in week 5 (peak temperature); ignored for now.
+    // w.thermal is not used here: the 5-parameter version below adds it.
     return cost;
 }
 
 double computeCost(const Metrics& m, const Design& d, const CostWeights& w,
                    const CostNorm& norm, double tempRise) {
-    // TODO(Jose, week 5): task J14.
-    (void)m; (void)d; (void)w; (void)norm; (void)tempRise;
-    return -1.0;
+    // Start from the usual cost (area + wirelength + outline), so the
+    // formula lives in one place only.
+    double cost = computeCost(m, d, w, norm);
+
+    // Add the temperature term, normalized like the others: a floorplan as hot
+    // as the reference one adds exactly w.thermal. Without a reference
+    // (norm.tempRise <= 0) we cannot normalize, so the term is left out.
+    if (norm.tempRise > 0) {
+        cost += w.thermal * tempRise / norm.tempRise;
+    }
+    return cost;
 }
 
 }  // namespace tp
