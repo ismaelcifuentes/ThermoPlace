@@ -1,6 +1,6 @@
 # Method (draft — Ismael)
 
-> Draft of the *Method* section of the final report. Everything here describes the code in `main` as of 5 November 2026. Numbers that depend on experiments (calibrated heat-sink value, final runtimes) are marked **TBD** and come from `docs/RESULTS.md` and `docs/VALIDATION.md`.
+> Draft of the *Method* section of the final report. Everything here describes the code as of 7 November 2026 (including the two-part package model, I15). Numbers that depend on experiments (calibrated heat-sink value, final runtimes) are marked **TBD** and come from `docs/RESULTS.md` and `docs/VALIDATION.md`.
 
 ThermoPlace has four parts that run in a loop: a **B\*-tree** that encodes a floorplan, a **packing** step that turns the tree into block coordinates, a **cost function** that scores the floorplan, and **simulated annealing (SA)**, which changes the tree and keeps or rejects each change. A **grid thermal model** adds the peak temperature to the cost. Figure 1 shows the loop.
 
@@ -48,7 +48,7 @@ SA changes the current solution with one of three moves, chosen with equal proba
 2. **Swap** the blocks of two random nodes (the tree shape does not change).
 3. **Move** a node to a free child slot of another node. Half of the time only a leaf is moved; the other half, the node is moved **with its whole subtree**, which changes the tree shape more. A subtree move is refused if the target is inside the moved subtree, since that would create a cycle. If no legal move is found in 20 tries, the step is skipped.
 
-All three moves keep the tree valid: one root, every node reachable exactly once, consistent parent/child links and every block in exactly one node. The test suite checks this invariant after thousands of random moves.
+All three moves keep the tree valid: one root, every node reachable exactly once, consistent parent/child links and every block in exactly one node. The tests check this invariant after sequences of random moves and at the end of every SA run.
 
 ## 4. Cost function
 
@@ -87,23 +87,30 @@ The benchmarks give no power. Like other thermal-aware floorplanning work, we as
 
 The die is divided into an *N* × *N* grid of cells. When the benchmark has a fixed outline, the die is the outline (enlarged to the bounding box if the chip overflows); otherwise it is the bounding box. Taking the whole outline as the die matters. Without it, a larger bounding box always looks cooler, because it has more heat-sink area, and SA would lower the temperature just by spreading the blocks apart.
 
-Each block spreads its power over the cells it covers, in proportion to the covered area, so the grid always adds up to the total power. Heat flows from each cell to its four neighbours through the silicon and down to the ambient through the package and heat sink. With cells of size *a* × *b* (in metres), die thickness *t* and silicon conductivity *k*, the conductances are
+Each block spreads its power over the cells it covers, in proportion to the covered area, so the grid always adds up to the total power *P*. Heat flows from each cell to its four neighbours through the silicon, and down through the package. The package has two parts in series:
+
+- a **per-area** part (die → heat spreader), with conductance *h* per m² of die;
+- a **lumped** part (spreader, heat sink and air) with resistance *R*<sub>pkg</sub>, shared by the whole die. At steady state all the power crosses it, so the node between the two parts sits at *T*<sub>pkg</sub> = *T*<sub>amb</sub> + *R*<sub>pkg</sub> *P*.
+
+We started with the per-area part only. Validation against HotSpot (Section 7) showed that no single *h* fits both ami33 and ami49, whose dies differ in area by a factor of 26: in HotSpot the spreader and sink are fixed and much larger than either die, so their resistance does not scale with die area. The lumped term models exactly that.
+
+With cells of size *a* × *b* (in metres), die thickness *t* and silicon conductivity *k*, the conductances are
 
 $$
 g_x = k\,t\,\frac{b}{a},\qquad g_y = k\,t\,\frac{a}{b},\qquad g_v = h\,a\,b ,
 $$
 
-where *h* is an equivalent heat-transfer coefficient of the package and heat sink per unit die area. At steady state, the heat entering each cell equals the heat leaving it:
+and at steady state the heat entering each cell equals the heat leaving it:
 
 $$
-P_{ij} + g_v\,(T_{\text{amb}} - T_{ij}) + g_x\,(T_{i,j-1} + T_{i,j+1} - 2T_{ij}) + g_y\,(T_{i-1,j} + T_{i+1,j} - 2T_{ij}) = 0 .
+P_{ij} + g_v\,(T_{\text{pkg}} - T_{ij}) + g_x\,(T_{i,j-1} + T_{i,j+1} - 2T_{ij}) + g_y\,(T_{i-1,j} + T_{i+1,j} - 2T_{ij}) = 0 .
 $$
 
-Cells on the edge of the die have no neighbour on that side (adiabatic boundary). We use *k* = 100 W/(m·K), *t* = 0.15 mm and *T*<sub>amb</sub> = 45 °C, the HotSpot defaults [4]. The value of *h* is **calibrated against HotSpot** in Section 7 (currently 4·10⁴ W/(m²·K); **TBD**).
+Cells on the edge of the die have no neighbour on that side (adiabatic boundary). We use *t* = 0.15 mm, *T*<sub>amb</sub> = 45 °C and *k* = 130 W/(m·K), the values of the HotSpot v7.0 example configuration [4]. *h* and *R*<sub>pkg</sub> are **calibrated against HotSpot** (Section 7); the current values, *h* = 1.15·10⁵ W/(m²·K) and *R*<sub>pkg</sub> = 0.28 K/W, are a first estimate (**TBD**).
 
 ### 6.3 Solver
 
-We solve the *N*² equations with Gauss–Seidel iteration with successive over-relaxation (SOR). Each sweep updates every cell with the newest values of its neighbours, moving it a factor ω past the plain Gauss–Seidel value, with ω = 2 / (1 + sin(π / (*N* + 1))). The sweeps stop when no cell changes by more than a tolerance (10⁻⁶ K for reporting, 10⁻³ K inside SA). SOR cut the number of sweeps by a factor of 6–9 in our tests: on ami33 with *N* = 32, 679 sweeps instead of 6006.
+We solve the *N*² equations with Gauss–Seidel iteration with successive over-relaxation (SOR). Each sweep updates every cell with the newest values of its neighbours, moving it a factor ω past the plain Gauss–Seidel value, with ω = 2 / (1 + sin(π / (*N* + 1))). The sweeps stop when no cell changes by more than a tolerance (10⁻⁶ K for reporting, 10⁻³ K inside SA). SOR cut the number of sweeps by up to 9× in our tests (ami33, *N* = 32: 679 sweeps instead of 6006); the gain grows with *N*.
 
 Inside SA the temperature is computed for every move. We use *N* = 16, which gave a peak temperature within 0.01 K (ami33) and 0.1 K (ami49) of *N* = 32, and a **warm start**: each solve begins from the previous temperature map instead of the ambient, since two consecutive SA floorplans are almost the same. With these settings a thermal-aware SA run takes about 6–7 s on ami33 and ami49, against 0.2–0.6 s without temperature.
 
@@ -111,7 +118,14 @@ For validation, we also compute the temperature of each block as the area-weight
 
 ## 7. Validation against HotSpot
 
-**TBD (Jose, J15).** For the best floorplans of ami33 and ami49 (seeds 1–5), we export HotSpot's floorplan (`.flp`) and power trace (`.ptrace`) files and run HotSpot in block mode. We compare its block temperatures with ours for *N* = 8, 16, 32 and 64 (mean absolute error, maximum error, error in *T*<sub>max</sub> and run time), and choose *h* to minimize the mean error.
+We validate the fast model against HotSpot v7.0 [4] in block mode (details in `docs/VALIDATION.md`). For the best floorplans of ami33 and ami49 (seeds 1–5), we export HotSpot's floorplan (`.flp`) and power trace (`.ptrace`), fill the empty parts of the die with 0 W blocks (HotSpot requires a floorplan without gaps), and compare HotSpot's block temperatures with ours.
+
+Preliminary results, with the per-area model only (*R*<sub>pkg</sub> = 0) and *k* = 100 W/(m·K) in both tools:
+
+- **Grid size.** *N* = 16 is enough: from *N* = 16 to 64 the mean absolute error (MAE) changes by less than 0.03 °C, while the solve time goes from 0.35 ms to 25 ms on ami33.
+- **Package.** Calibrated per benchmark, the MAE is 0.59 °C on ami33 (*h* = 1.26·10⁵) and 1.18 °C on ami49 (*h* = 6.31·10⁴). The best single *h* (7.94·10⁴) leaves 4.7 °C, which motivated the two-part package model of Section 6.2.
+
+**TBD (J15, final):** joint calibration of *h* and *R*<sub>pkg</sub> on both benchmarks with *k* = 130, and the resulting error table.
 
 ## 8. Implementation
 
@@ -122,12 +136,12 @@ ThermoPlace is written in C++17 with the standard library only, and builds with 
 | `Parser` | MCNC and GSRC readers | Eimi |
 | `Contour`, `BStarTree` | Representation, packing, moves | Ismael |
 | `Annealer` | Simulated annealing | Ismael |
-| `Thermal` | Power grid, thermal solver, warm-start evaluator | Ismael |
+| `Thermal` | Power grid, thermal solver, package model, warm-start evaluator | Ismael |
 | `Metrics`, `Validator`, `Cost` | Area, HPWL, overlap check, cost function | Jose |
 | `Exporters`, `Power` | SVG, HotSpot `.flp`/`.ptrace`, heat map, synthetic power | Jose |
 | `Report`, `app/main.cpp` | CSV reports and command-line program | Eimi |
 
-The interfaces are checked by 56 unit and integration tests written without an external framework (**update the count before submitting**). Every floorplan reported in the results also passes an independent overlap validator.
+The interfaces are checked by 57 unit and integration tests written without an external framework (**update the count before submitting**). Every floorplan reported in the results also passes an independent overlap validator.
 
 ## References
 
