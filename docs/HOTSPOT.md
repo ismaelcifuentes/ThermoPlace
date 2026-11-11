@@ -108,10 +108,10 @@ Valores del `example.config` del ejemplo 1, frente a los de nuestro `ThermalPara
 |---|---|---|---|
 | Ambiente | `-ambient 318.15` K = 45 °C | `ambientC = 45` | sí |
 | Espesor del die | `-t_chip 0.00015` m | `dieThickness = 0.15e-3` | sí |
-| Conductividad del silicio | `-k_chip 130.0` W/(m·K) | `siliconK = 100` | **no** |
-| Disipador | `-r_convec 0.1` K/W, `-s_sink 0.06` m, `-t_sink 0.0069` m, `-s_spreader 0.03` m | `heatSinkH = 4e4` W/(m²·K), un solo número | otro modelo |
+| Conductividad del silicio | `-k_chip 130.0` W/(m·K) | `siliconK = 130` (desde I15) | sí |
+| Disipador | `-r_convec 0.1` K/W, `-s_sink 0.06` m, `-t_sink 0.0069` m, `-s_spreader 0.03` m | `heatSinkH` (por m² de die) + `packageR` (K/W, fijo), calibrados en J15 | otro modelo |
 | Fugas (leakage) | `-leakage_used 0` | no modelado | sí |
 
-- **k_chip:** el ejemplo 1 usa 130 W/(m·K) y nosotros 100. Para J15 hay que decidir cuál usar y poner el mismo en los dos (en HotSpot se cambia con `-k_chip 100`).
-- **Disipador:** HotSpot modela el spreader, el disipador y la convección por separado. Nosotros lo resumimos en `heatSinkH`, que es justo lo que se calibra en J15.
+- **k_chip:** el equipo decidió usar 130 W/(m·K), igual que `example.config`, así que HotSpot se corre sin `-k_chip`.
+- **Disipador:** HotSpot modela el spreader, el disipador y la convección por separado. Nosotros lo resumimos en dos números, `heatSinkH` y `packageR`, que se calibran contra HotSpot en J15 (`docs/VALIDATION.md`).
 - **Tamaño del die:** el disipador de HotSpot (6 × 6 cm) es mucho más grande que ami33 (~1,3 mm). Hay que tenerlo en cuenta al interpretar la calibración.
