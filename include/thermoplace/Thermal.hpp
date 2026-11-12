@@ -42,9 +42,10 @@ struct ThermalParams {
     double ambientC = 45.0;         // ambient temperature (HotSpot default, in C)
     double siliconK = 130.0;        // W/(m*K): -k_chip of HotSpot v7.0 example/template configs
     double dieThickness = 0.15e-3;  // m (HotSpot default t_chip)
-    // PROVISIONAL until J15 recalibrates them against HotSpot (docs/VALIDATION.md):
-    double heatSinkH = 1.15e5;      // W/(m^2*K): die -> spreader, per m^2 of die
-    double packageR = 0.28;         // K/W: spreader + heat sink + air, shared by the whole die
+    // Calibrated against HotSpot v7.0 (example.config) on ami33 + ami49, joint
+    // MAE 0.53 C per block (J15, docs/VALIDATION.md):
+    double heatSinkH = 1.4e5;       // W/(m^2*K): die -> spreader, per m^2 of die
+    double packageR = 0.20;         // K/W: spreader + heat sink + air, shared by the whole die
     int maxIterations = 20000;      // safety stop for Gauss-Seidel
     double omega = 0.0;             // SOR factor: 1 = plain Gauss-Seidel,
                                     // 0 = automatic, 2 / (1 + sin(pi / (gridN + 1)))
