@@ -4,11 +4,12 @@
 // Usage:
 //   thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]
 //               [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]
-//               [--runs-csv FILE]
+//               [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]
 // Examples:
 //   thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000
 //   thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1
 //   thermoplace benchmarks/mcnc/ami49.block --sa --outline-weight 5 --cooling 0.98 --moves-per-temp 2000
+//   thermoplace benchmarks/mcnc/ami33.block --sa --outline-weight 5 --thermal --seed 1
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -24,7 +25,9 @@
 #include "thermoplace/Exporters.hpp"
 #include "thermoplace/Metrics.hpp"
 #include "thermoplace/Parser.hpp"
+#include "thermoplace/Power.hpp"
 #include "thermoplace/Report.hpp"
+#include "thermoplace/Thermal.hpp"
 #include "thermoplace/Validator.hpp"
 
 using namespace tp;
@@ -43,16 +46,26 @@ struct Options {
     double cooling = 0.95;
     int movesPerTemp = 0; // 0 = automatic (10 x number of blocks), as in SAParams
     std::string runsCsv;  // empty = <out>/runs.csv
+    bool thermal = false; // E11b: synthetic power + grid thermal model
+    unsigned powerSeed = 1;
+    int gridN = 32;
 };
+
+// Power density range used in the whole project (docs/SEMANA4.md): 0.5 to 2 W/mm^2,
+// written per benchmark unit (um^2) because that is what Block::area() returns.
+const double kMinPowerDensity = 0.5e-6;
+const double kMaxPowerDensity = 2.0e-6;
 
 void usage() {
     std::cerr << "Usage: thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]\n"
               << "                   [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]\n"
-              << "                   [--runs-csv FILE]\n"
+              << "                   [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]\n"
               << "  e.g. thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000\n"
               << "       thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1\n"
               << "  With --sa, --iters is ignored. With --outline-weight above 0, SA returns the best\n"
-              << "  floorplan that fits the outline, if it found one.\n";
+              << "  floorplan that fits the outline, if it found one.\n"
+              << "  --thermal gives each block a synthetic power (0.5 to 2 W/mm^2, --power-seed)\n"
+              << "  and solves the temperature on a --grid N x N grid (default 32).\n";
 }
 
 bool parseArgs(int argc, char** argv, Options& o) {
@@ -72,6 +85,9 @@ bool parseArgs(int argc, char** argv, Options& o) {
         else if (a == "--cooling" && (v = next())) o.cooling = std::atof(v);
         else if (a == "--moves-per-temp" && (v = next())) o.movesPerTemp = std::atoi(v);
         else if (a == "--runs-csv" && (v = next())) o.runsCsv = v;
+        else if (a == "--thermal") o.thermal = true;
+        else if (a == "--power-seed" && (v = next())) o.powerSeed = static_cast<unsigned>(std::atol(v));
+        else if (a == "--grid" && (v = next())) o.gridN = std::atoi(v);
         else { std::cerr << "Unknown or incomplete option: " << a << "\n"; return false; }
     }
     if (o.runsCsv.empty()) o.runsCsv = o.outDir + "/runs.csv";
@@ -80,6 +96,8 @@ bool parseArgs(int argc, char** argv, Options& o) {
     if (o.cooling <= 0.0 || o.cooling >= 1.0) { std::cerr << "--cooling must be between 0 and 1 (exclusive)\n"; return false; }
     if (o.outlineWeight < 0.0) { std::cerr << "--outline-weight cannot be negative\n"; return false; }
     if (o.movesPerTemp < 0) { std::cerr << "--moves-per-temp cannot be negative (0 = automatic)\n"; return false; }
+    // A 1 x 1 grid has no neighbours, so it would only show the average heating.
+    if (o.gridN < 2) { std::cerr << "--grid must be at least 2\n"; return false; }
     return true;
 }
 
@@ -100,7 +118,8 @@ void exportAll(const Design& d, const Options& o, const std::string& tag) {
 
 // One line of the runs table, so random search and SA land in the same CSV and
 // the paper can compare them seed by seed.
-void recordRun(const Design& d, const Options& o, const std::string& method, double seconds) {
+void recordRun(const Design& d, const Options& o, const std::string& method, double seconds,
+               double maxTempC) {
     Metrics m = computeMetrics(d);
     RunRecord r;
     r.benchmark = d.name;
@@ -113,6 +132,7 @@ void recordRun(const Design& d, const Options& o, const std::string& method, dou
     r.hpwl = m.hpwl;
     r.fitsOutline = m.fitsOutline;
     r.seconds = seconds;
+    r.maxTempC = maxTempC;
     std::string err;
     if (appendRunCSV(r, o.runsCsv, err)) std::cout << "  added a line to " << o.runsCsv << "\n";
     else std::cout << "  [skip] runs CSV: " << err << "\n";
@@ -126,6 +146,34 @@ std::string saMethodName(const Options& o) {
     char buf[64];
     std::snprintf(buf, sizeof buf, "sa_c%g_m%d", o.cooling, o.movesPerTemp);
     return buf;
+}
+
+// E11b. Solves the grid model for the current packing and prints one summary line.
+ThermalMap runThermal(const Design& d, const Options& o, const char* label) {
+    ThermalParams p;
+    p.gridN = o.gridN;
+    p.unitToMeters = o.scale;  // same conversion the .flp export uses
+    auto t0 = std::chrono::steady_clock::now();
+    ThermalMap map = solveThermal(d, p);
+    double ms = 1000.0 * std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    std::printf("Thermal %-8s Tmax %.2f C | Tavg %.2f C | grid %d | %d sweeps%s | %.1f ms\n",
+                label, map.maxTemp, map.avgTemp, map.n, map.iterations,
+                map.converged ? "" : " (did NOT converge)", ms);
+    return map;
+}
+
+// Files for HotSpot (.ptrace) and for plotting (.csv, heat map) of the final floorplan.
+void exportThermalFiles(const Design& d, const ThermalMap& map, const Options& o) {
+    std::string base = o.outDir + "/" + d.name;
+    std::string err;
+    if (exportPTrace(d, base + "_best.ptrace", err)) std::cout << "  wrote " << base << "_best.ptrace\n";
+    else std::cout << "  [skip] ptrace: " << err << "\n";
+    if (exportCSV(d, base + "_best.csv", err)) std::cout << "  wrote " << base << "_best.csv\n";
+    else std::cout << "  [skip] blocks CSV: " << err << "\n";
+    std::string title = d.name + " temperature (power seed " + std::to_string(o.powerSeed) + ")";
+    if (exportThermalSVG(map, base + "_thermal.svg", title, err))
+        std::cout << "  wrote " << base << "_thermal.svg\n";
+    else std::cout << "  [skip] thermal SVG: " << err << "\n";
 }
 
 double secondsSince(std::chrono::steady_clock::time_point t0) {
@@ -151,6 +199,17 @@ int main(int argc, char** argv) {
               << d.terminals.size() << " terminals, " << d.nets.size() << " nets, outline "
               << d.outlineW << " x " << d.outlineH << ", block area " << d.totalBlockArea() << "\n";
 
+    // Power goes with the block, not with its position, so it is assigned once here
+    // and every floorplan the optimizer tries keeps the same powers.
+    if (opt.thermal) {
+        assignSyntheticPower(d, opt.powerSeed, kMinPowerDensity, kMaxPowerDensity);
+        double total = totalPower(d);
+        std::printf("Power: %.2f W total (seed %u, 0.5 to 2 W/mm^2)\n", total, opt.powerSeed);
+        if (total <= 0.0)
+            std::cout << "  [warn] every block has 0 W, so the map will sit at ambient "
+                         "(is assignSyntheticPower implemented yet?)\n";
+    }
+
     // 2) Initial B*-tree and packing
     BStarTree tree;
     tree.buildInitial(static_cast<int>(d.blocks.size()));
@@ -165,6 +224,7 @@ int main(int argc, char** argv) {
     Metrics m0 = computeMetrics(d);
     printMetrics("initial", m0);
     exportAll(d, opt, "initial");
+    if (opt.thermal) runThermal(d, opt, "initial");
 
     // 4a) E8. Simulated annealing (Ismael's anneal + Jose's computeCost).
     if (opt.sa && tree.size() > 1) {
@@ -203,6 +263,12 @@ int main(int argc, char** argv) {
         std::cout << "Validation: " << (rep.ok ? "OK (no overlaps)" : "FAILED") << "\n";
         printMetrics("best", computeMetrics(d));
         exportAll(d, opt, "best");
+        double maxTemp = 0.0;  // stays 0 in runs.csv when --thermal is off
+        if (opt.thermal) {
+            ThermalMap map = runThermal(d, opt, "best");
+            maxTemp = map.maxTemp;
+            exportThermalFiles(d, map, opt);
+        }
 
         std::string base = opt.outDir + "/" + d.name;
         if (writeTraceCSV(res.trace, base + "_trace.csv", err)) std::cout << "  wrote " << base << "_trace.csv\n";
@@ -211,7 +277,7 @@ int main(int argc, char** argv) {
         if (exportConvergenceSVG(res.trace, base + "_convergence.svg", title, err))
             std::cout << "  wrote " << base << "_convergence.svg\n";
         else std::cout << "  [skip] convergence SVG: " << err << "\n";
-        recordRun(d, opt, saMethodName(opt), secs);
+        recordRun(d, opt, saMethodName(opt), secs, maxTemp);
         return rep.ok ? 0 : 3;
     }
 
@@ -259,7 +325,13 @@ int main(int argc, char** argv) {
         std::cout << "Validation: " << (rep.ok ? "OK (no overlaps)" : "FAILED") << "\n";
         printMetrics("best", computeMetrics(d));
         exportAll(d, opt, "best");
-        recordRun(d, opt, "random", secs);
+        double maxTemp = 0.0;
+        if (opt.thermal) {
+            ThermalMap map = runThermal(d, opt, "best");
+            maxTemp = map.maxTemp;
+            exportThermalFiles(d, map, opt);
+        }
+        recordRun(d, opt, "random", secs, maxTemp);
     }
 
     return rep.ok ? 0 : 3;
