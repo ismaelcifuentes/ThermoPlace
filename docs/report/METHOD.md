@@ -1,6 +1,6 @@
 # Method (draft — Ismael)
 
-> Draft of the *Method* section of the final report. Everything here describes the code as of 7 November 2026 (including the two-part package model, I15). Numbers that depend on experiments (calibrated heat-sink value, final runtimes) are marked **TBD** and come from `docs/RESULTS.md` and `docs/VALIDATION.md`.
+> Draft of the *Method* section of the final report. Everything here describes the code in `main` as of 12 November 2026. Validation numbers come from `docs/VALIDATION.md` (J15) and experimental results from `docs/RESULTS.md`.
 
 ThermoPlace has four parts that run in a loop: a **B\*-tree** that encodes a floorplan, a **packing** step that turns the tree into block coordinates, a **cost function** that scores the floorplan, and **simulated annealing (SA)**, which changes the tree and keeps or rejects each change. A **grid thermal model** adds the peak temperature to the cost. Figure 1 shows the loop.
 
@@ -52,7 +52,7 @@ All three moves keep the tree valid: one root, every node reachable exactly once
 
 ## 4. Cost function
 
-All terms are normalized by the value of the initial floorplan, so that each starts near 1 and the weights really set their relative importance:
+The area, wirelength and temperature terms are normalized by the value of the initial floorplan, so that each starts near 1 and the weights really set their relative importance; the outline penalty is normalized by the outline itself:
 
 $$
 C = \alpha\,\frac{A}{A_0} + (1-\alpha)\,\frac{L}{L_0} + \beta\,P_{\text{out}} + \gamma\,\frac{\Delta T}{\Delta T_0}
@@ -106,7 +106,7 @@ $$
 P_{ij} + g_v\,(T_{\text{pkg}} - T_{ij}) + g_x\,(T_{i,j-1} + T_{i,j+1} - 2T_{ij}) + g_y\,(T_{i-1,j} + T_{i+1,j} - 2T_{ij}) = 0 .
 $$
 
-Cells on the edge of the die have no neighbour on that side (adiabatic boundary). We use *t* = 0.15 mm, *T*<sub>amb</sub> = 45 °C and *k* = 130 W/(m·K), the values of the HotSpot v7.0 example configuration [4]. *h* and *R*<sub>pkg</sub> are **calibrated against HotSpot** (Section 7); the current values, *h* = 1.15·10⁵ W/(m²·K) and *R*<sub>pkg</sub> = 0.28 K/W, are a first estimate (**TBD**).
+Cells on the edge of the die have no neighbour on that side (adiabatic boundary). We use *t* = 0.15 mm, *T*<sub>amb</sub> = 45 °C and *k* = 130 W/(m·K), the values of the HotSpot v7.0 example configuration [4]. *h* and *R*<sub>pkg</sub> are calibrated against HotSpot (Section 7): *h* = 1.4·10⁵ W/(m²·K) and *R*<sub>pkg</sub> = 0.20 K/W.
 
 ### 6.3 Solver
 
@@ -118,14 +118,22 @@ For validation, we also compute the temperature of each block as the area-weight
 
 ## 7. Validation against HotSpot
 
-We validate the fast model against HotSpot v7.0 [4] in block mode (details in `docs/VALIDATION.md`). For the best floorplans of ami33 and ami49 (seeds 1–5), we export HotSpot's floorplan (`.flp`) and power trace (`.ptrace`), fill the empty parts of the die with 0 W blocks (HotSpot requires a floorplan without gaps), and compare HotSpot's block temperatures with ours.
+We validate the fast model against HotSpot v7.0 [4] in block mode, with its `example.config` package (details and scripts in `docs/VALIDATION.md` and `tools/`). For the best floorplans of ami33 and ami49 (seeds 1–5, 10 floorplans), we export HotSpot's floorplan (`.flp`) and power trace (`.ptrace`), fill the empty parts of the die with 0 W blocks (HotSpot requires a floorplan without gaps), and compare HotSpot's block temperatures with ours. The error measure is the mean absolute error (MAE) over the blocks of a floorplan, averaged over the 10 floorplans.
 
-Preliminary results, with the per-area model only (*R*<sub>pkg</sub> = 0) and *k* = 100 W/(m·K) in both tools:
+**Package calibration.** With the per-area part only, no single *h* fitted both benchmarks: the best common value left an MAE of 4.7 °C, and the best values for each benchmark differed by a factor of 2. With the two-part package, a grid search over *h* (10⁴–10⁷ W/(m²·K)) and *R*<sub>pkg</sub> (0–1 K/W) found one pair for both: *h* = 1.4·10⁵ W/(m²·K) and *R*<sub>pkg</sub> = 0.20 K/W, with a joint MAE of 0.53 °C (grid 32).
 
-- **Grid size.** *N* = 16 is enough: from *N* = 16 to 64 the mean absolute error (MAE) changes by less than 0.03 °C, while the solve time goes from 0.35 ms to 25 ms on ami33.
-- **Package.** Calibrated per benchmark, the MAE is 0.59 °C on ami33 (*h* = 1.26·10⁵) and 1.18 °C on ami49 (*h* = 6.31·10⁴). The best single *h* (7.94·10⁴) leaves 4.7 °C, which motivated the two-part package model of Section 6.2.
+**Grid size.** With these values, *N* = 16 is enough:
 
-**TBD (J15, final):** joint calibration of *h* and *R*<sub>pkg</sub> on both benchmarks with *k* = 130, and the resulting error table.
+| Grid *N* | Joint MAE (°C) | Solve time, ami33 / ami49 (ms) |
+|---|---|---|
+| 8 | 0.61 | 0.06 / 0.04 |
+| 16 | 0.55 | 0.42 / 0.25 |
+| 32 | 0.53 | 3.97 / 2.14 |
+| 64 | 0.53 | 32.8 / 17.6 |
+
+With *N* = 16, the error in *T*<sub>max</sub> is +0.5 °C on ami33 and −1.4 °C on ami49, and the worst block of the 10 floorplans is off by 2.3 °C. A HotSpot run takes about 16 ms (ami33) and 99 ms (ami49), including start-up and file reading.
+
+**Limits.** The calibration was fitted and evaluated on the same 10 floorplans, with one power assignment and one HotSpot package configuration; with another package the calibrated values change. HotSpot in block mode is itself a model, not a measurement.
 
 ## 8. Implementation
 
@@ -137,6 +145,7 @@ ThermoPlace is written in C++17 with the standard library only, and builds with 
 | `Contour`, `BStarTree` | Representation, packing, moves | Ismael |
 | `Annealer` | Simulated annealing | Ismael |
 | `Thermal` | Power grid, thermal solver, package model, warm-start evaluator | Ismael |
+| `tools/` | HotSpot validation: gap filling, calibration sweep, comparison script | Jose |
 | `Metrics`, `Validator`, `Cost` | Area, HPWL, overlap check, cost function | Jose |
 | `Exporters`, `Power` | SVG, HotSpot `.flp`/`.ptrace`, heat map, synthetic power | Jose |
 | `Report`, `app/main.cpp` | CSV reports and command-line program | Eimi |
