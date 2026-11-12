@@ -71,14 +71,14 @@ TEST(thermal, no_power_means_ambient) {
 
 TEST(thermal, uniform_power_matches_formula) {
     // Same power density everywhere -> no sideways flow, so every cell is at
-    // Tamb + P / (h * A), with A the chip area in m^2.
+    // Tamb + P * R_pkg + P / (h * A), with A the chip area in m^2.
     Design d = twoBlocks(1.0, 1.0);
     ThermalParams p;
     p.gridN = 16;
     ThermalMap m = solveThermal(d, p);
     REQUIRE(m.converged);
     double area = 2000e-6 * 1000e-6;
-    double expected = p.ambientC + 2.0 / (p.heatSinkH * area);
+    double expected = p.ambientC + 2.0 * p.packageR + 2.0 / (p.heatSinkH * area);
     CHECK_NEAR(m.maxTemp, expected, 1e-3);
     CHECK_NEAR(m.avgTemp, expected, 1e-3);
 }
@@ -90,10 +90,10 @@ TEST(thermal, energy_balance_and_hot_side) {
     ThermalMap m = solveThermal(d, p);
     REQUIRE(m.converged);
     CHECK(m.iterations < p.maxIterations);
-    // At steady state all the power leaves through the heat sink.
+    // At steady state all the power leaves through the package node.
     double cellArea = (m.cellW * p.unitToMeters) * (m.cellH * p.unitToMeters);
     double out = 0.0;
-    for (double t : m.temp) out += p.heatSinkH * cellArea * (t - p.ambientC);
+    for (double t : m.temp) out += p.heatSinkH * cellArea * (t - m.packageTemp);
     CHECK_NEAR(out, 2.0, 2.0 * 1e-3);
     // The powered (left) side is hotter, and temperature falls from left to right.
     int mid = m.n / 2;
@@ -114,6 +114,22 @@ TEST(thermal, sor_gives_the_same_answer) {
     REQUIRE(a.converged && b.converged);
     CHECK(b.iterations < a.iterations);  // SOR needs fewer sweeps
     for (std::size_t i = 0; i < a.temp.size(); ++i) CHECK_NEAR(a.temp[i], b.temp[i], 1e-3);
+}
+
+TEST(thermal, package_resistance_shifts_everything) {
+    // packageR only moves the whole map up by P_total * packageR.
+    Design d = twoBlocks(2.0, 0.5);
+    ThermalParams noPkg;
+    noPkg.gridN = 16;
+    noPkg.packageR = 0.0;
+    ThermalParams pkg = noPkg;
+    pkg.packageR = 0.4;
+    ThermalMap a = solveThermal(d, noPkg);
+    ThermalMap b = solveThermal(d, pkg);
+    REQUIRE(a.converged && b.converged);
+    CHECK_NEAR(b.packageTemp, pkg.ambientC + 2.5 * 0.4, 1e-12);
+    CHECK_NEAR(b.maxTemp - a.maxTemp, 1.0, 1e-3);
+    for (std::size_t i = 0; i < a.temp.size(); ++i) CHECK_NEAR(b.temp[i] - a.temp[i], 1.0, 1e-3);
 }
 
 // ------------------------------------------------------------------ Jose (J12)
