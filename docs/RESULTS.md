@@ -72,3 +72,36 @@ HPWL = Σ por net de (max x − min x) + (max y − min y)
 | ami49 | `--sa --outline-weight 5 --cooling 0.98 --moves-per-temp 2000 --seed 2` | 9,42 % | sí |
 
 Cada corrida deja `<bench>_best.svg` (bloques, contorno del chip en negro y outline fijo en rojo) y `<bench>_convergence.svg` (costo actual y mejor costo por temperatura).
+
+## Frente de Pareto: área contra Tmax (semana 5, E13)
+
+Corridas: `--sa --outline-weight 5 --thermal --thermal-weight W`, pesos 0, 0,25, 0,5, 0,75 y 1, semillas 1 a 5, potencia de J7 (semilla 1, 0,5 a 2 W/mm²). Disipador calibrado contra HotSpot en `docs/VALIDATION.md`: `--heat-sink-h 1.4e5 --package-r 0.20`. Dentro del SA la temperatura se calcula con grilla 16; la Tmax de la tabla es la del mejor floorplan con grilla 32. Datos: `results/pareto.csv` (no se sube), generado con `run_e13.bat`. Tiempos en la PC de Eimi (Windows 11, MinGW g++ -O2).
+
+### ami33
+
+| Peso térmico | Tmax media (°C) | Mejor Tmax (°C) | Espacio muerto medio | HPWL medio | Cabe | Tiempo medio (s) |
+|---|---|---|---|---|---|---|
+| 0 | 54,24 | 53,66 | 15,63 % | 92 976 | 5/5 | 0,54 |
+| 0,25 | 53,10 | 52,91 | 18,96 % | 90 828 | 5/5 | 8,88 |
+| 0,5 | 53,18 | 52,93 | 22,94 % | 106 051 | 5/5 | 7,98 |
+| 0,75 | 52,81 | 52,35 | 28,46 % | 110 884 | 3/5 | 7,19 |
+| 1 | 52,49 | 52,27 | 32,29 % | 104 931 | 1/5 | 8,84 |
+
+### ami49
+
+| Peso térmico | Tmax media (°C) | Mejor Tmax (°C) | Espacio muerto medio | HPWL medio | Cabe | Tiempo medio (s) |
+|---|---|---|---|---|---|---|
+| 0 | 69,21 | 69,16 | 11,90 % | 1 020 173 | 3/5 | 1,34 |
+| 0,25 | 68,97 | 68,56 | 13,17 % | 990 767 | 2/5 | 15,95 |
+| 0,5 | 68,88 | 68,45 | 13,57 % | 1 028 905 | 2/5 | 19,35 |
+| 0,75 | 68,66 | 68,22 | 15,08 % | 1 043 043 | 1/5 | 18,54 |
+| 1 | 68,70 | 68,26 | 13,51 % | 1 046 381 | 1/5 | 15,18 |
+
+![Frente de Pareto de ami33 y ami49](figures/pareto_e13.svg)
+
+Qué muestran los datos:
+
+- **ami33:** el peso 1 baja la Tmax media 1,75 °C (54,24 a 52,49 °C), pero el espacio muerto sube de 15,6 % a 32,3 % y solo 1 de 5 floorplans cabe en el outline. El peso 0,25 ya da 1,14 °C de esa mejora con 3,3 puntos más de espacio muerto, y todos caben.
+- **ami49:** la mejor media es 68,66 °C, 0,55 °C menos que sin peso. Las diferencias entre pesos son del mismo tamaño que la dispersión entre semillas (puntos tenues de la figura), y el peso 1 queda por encima del 0,75.
+- **Por qué el efecto es pequeño.** Con el paquete de dos partes (I15), toda la potencia pasa por `packageR`, que sube el nodo del paquete a 45 + 0,20 · P: 45,32 °C en ami33 y 55,11 °C en ami49 (calculado con la potencia total de J7). Esa parte no depende de dónde va cada bloque. Lo que la colocación sí cambia es Tmax − T_paquete: en ami33 baja de 8,91 a 7,17 K (20 %), y en ami49 de 14,11 a 13,55 K (4 %).
+- **Límites.** Una sola asignación de potencia (semilla 1) y un solo par de valores del disipador. Con potencias más desiguales entre bloques, o con un disipador peor, el término térmico podría pesar más; falta probarlo.
