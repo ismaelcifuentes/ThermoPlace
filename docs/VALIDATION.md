@@ -2,7 +2,7 @@
 
 **Pregunta:** ¿qué tan simple puede ser nuestro modelo térmico (grilla N × N con Gauss-Seidel, `src/Thermal.cpp`) sin perder precisión frente a HotSpot?
 
-**Respuesta (10 nov):** bastante simple. Con un disipador de dos partes (`heatSinkH` por m² más una resistencia fija `packageR`, I15) y **un solo par de valores para los dos benchmarks**, h = 1,4·10⁵ W/(m²·K) y R = 0,20 K/W, la temperatura de cada bloque queda a **0,55 °C de HotSpot en promedio** con una grilla de 16 × 16 (0,44 °C en ami33 y 0,66 °C en ami49). Con N = 16 el cálculo tarda menos de 0,5 ms, y el error es prácticamente el mismo que con N = 64.
+**Respuesta (10 nov):** bastante simple. Con un disipador de dos partes (`heatSinkH` por m² más una resistencia fija `packageR`, I15) y **un solo par de valores para los dos benchmarks**, h = 1,4·10⁵ W/(m²·K) y R = 0,20 K/W, la temperatura de cada bloque queda a **0,55 °C de HotSpot en promedio** con una grilla de 16 × 16 (0,44 °C en ami33 y 0,66 °C en ami49). Con N = 16 el cálculo tarda menos de 0,5 ms, y el error es prácticamente el mismo que con N = 64. Con potencia mucho más desigual (0,1–10 W/mm², J17) los mismos valores siguen siendo los mejores, pero el error sube a 1,9 °C en ami33 y 3,7 °C en ami49, donde el modelo subestima la Tmax en unos 7 °C (sección 6).
 
 ## 1. Qué se comparó
 
@@ -80,11 +80,44 @@ Tmax de HotSpot (media de las 5 semillas): ami33 53,6 °C, ami49 69,3 °C. HotSp
 
 ## 5. Límites
 
-- Solo dos benchmarks y una sola asignación de potencia (semilla 1). La calibración se hizo y se evaluó sobre los mismos 10 floorplans: no hay un conjunto aparte de prueba.
+- Solo dos benchmarks y una sola semilla de potencia (semilla 1). La calibración se hizo y se evaluó sobre los mismos 10 floorplans: no hay un conjunto aparte de prueba. Con potencia mucho más desigual (0,1–10 W/mm²) el error crece, sobre todo en ami49 (sección 6).
 - Solo floorplans de SA sin término térmico. Los floorplans del frente de Pareto (E13) pueden tener otra distribución de calor.
 - Se compara con HotSpot en modo bloque, que también es un modelo (una temperatura por bloque); no es una medición.
 - La configuración de HotSpot es la de `example.config` (`-r_convec 0.1`). Con otro encapsulado, los valores calibrados cambian.
 
-## 6. Primera versión (5 nov): solo `heatSinkH`
+## 6. Potencia muy desigual (J17, 16 nov)
+
+**Pregunta:** ¿el modelo sigue cerca de HotSpot cuando la potencia es muy desigual? Ismael vio que con 0,1–10 W/mm² el peso térmico 1 baja la Tmax de ami33 en 7,5 °C (con 0,5–2 W/mm², solo 1,6 °C), así que esos resultados dependen de que el modelo sea preciso con esa potencia.
+
+**Qué se hizo:** los mismos 10 floorplans de las secciones 2 y 3 (SA sin peso térmico), con la potencia de J7 pero con densidades de **0,1 a 10 W/mm²** (semilla 1; total ami33 6,91 W, ami49 220,1 W, unas 4,3 veces más que con 0,5–2 W/mm²), y **sin recalibrar**: h = 1,4·10⁵, R = 0,20.
+
+```bash
+J15_OUT=build/j17 POWER_MIN=0.1 POWER_MAX=10 bash tools/run_j15.sh validate 1.4e5 0.20
+```
+
+Como la potencia total es mayor, el chip se calienta más y el error en °C crece aunque el modelo sea igual de bueno. Por eso se agrega el **error relativo**: el MAE dividido por la subida media de temperatura de los bloques en HotSpot (temperatura menos 45 °C de ambiente).
+
+| Benchmark | Potencia (W/mm²) | Grilla | MAE (°C) | MAE / subida (%) | Error máx. (°C) | Error en Tmax (°C) | Tmax HotSpot (°C) |
+|---|---|---|---|---|---|---|---|
+| ami33 | 0,5–2 | 16 | 0,44 | 5,9 | 0,88 | +0,46 | 53,6 |
+| ami33 | **0,1–10** | 16 | **1,87** | **5,8** | 4,18 | +1,81 | 82,7 |
+| ami33 | 0,1–10 | 32 | 1,87 | 5,9 | 4,26 | +1,86 | 82,7 |
+| ami49 | 0,5–2 | 16 | 0,66 | 3,7 | 2,33 | −1,36 | 69,3 |
+| ami49 | **0,1–10** | 16 | **3,73** | **5,0** | 12,71 | −7,49 | 159,5 |
+| ami49 | 0,1–10 | 32 | 3,44 | 4,6 | 12,26 | −6,96 | 159,5 |
+| ami49 | 0,1–10 | 64 | 3,42 | 4,5 | 11,97 | −6,83 | 159,5 |
+
+MAE conjunto con 0,1–10 W/mm²: 2,80 °C (N = 16), 2,65 °C (N = 32).
+
+**Recalibración con esta potencia** (`calibrate`, mismo barrido 2D): el mejor par conjunto es otra vez **h = 1,41·10⁵, R = 0,20** (MAE conjunto 2,49 °C). Calibrando solo ami49, lo mejor es h = 1,12·10⁵, R = 0,16, con 2,90 °C.
+
+**Resultado:**
+
+1. **La calibración no depende de la potencia.** El mejor (h, R) es el mismo con 0,5–2 y con 0,1–10 W/mm², así que los valores por defecto siguen siendo válidos.
+2. **ami33: el error crece solo porque hay más potencia.** En relativo queda igual (5,9 % → 5,8 %). En °C pasa de 0,44 a 1,87, por encima del ~1 °C buscado.
+3. **ami49: la potencia desigual sí empeora el modelo.** El error relativo sube de 3,7 % a 5,0 % (N = 16), el peor bloque llega a 12,7 °C de error, y el modelo **subestima la Tmax en unos 7 °C**. No es por la grilla (con N = 64 sigue en 6,8 °C) ni por la calibración (calibrando solo ami49, el MAE no baja de 2,9 °C). Es un límite del modelo con bloques muy calientes junto a bloques casi apagados. No sabemos todavía la causa exacta; una posibilidad es que nuestro camino vertical (un solo `heatSinkH` por m²) reparta el calor de un bloque caliente más que las capas de HotSpot (interfaz, spreader y disipador por separado).
+4. **Consecuencia para el frente de Pareto.** Con 0,1–10 W/mm², la Tmax absoluta de nuestro modelo puede estar hasta unos 7 °C por debajo de la de HotSpot en ami49. Para el informe conviene confirmar en HotSpot que los floorplans con peso térmico de verdad bajan la Tmax (próximo paso, cuando E14 permita generar esos floorplans con esta potencia).
+
+## 7. Primera versión (5 nov): solo `heatSinkH`
 
 Con el modelo anterior (sin `packageR`, `siliconK = 100` y HotSpot con `-k_chip 100`), el `heatSinkH` por defecto (4·10⁴) sobrestimaba la temperatura en 10 a 18 °C. El mejor valor de cada benchmark era distinto (1,26·10⁵ en ami33 con MAE 0,59 °C; 6,31·10⁴ en ami49 con MAE 1,18 °C), y el mejor valor común (7,94·10⁴) dejaba 4,7 °C de MAE. Sin relleno, HotSpot daba una Tmax 2,7 a 4 °C más alta. Esto llevó a agregar `packageR` (I15).

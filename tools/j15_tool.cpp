@@ -10,6 +10,7 @@
 //   j15_tool <bench.block> <best.flp> <prefix> grids <heatSinkH> <packageR>
 //       -> <prefix>_grids.csv: grids 8, 16, 32 and 64 with those two values
 // The CSV files have the columns grid,heat_sink_h,package_r,block,temp_c,seconds.
+// Power range: POWER_MIN and POWER_MAX in W/mm^2 (environment, default 0.5 and 2).
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -128,8 +129,12 @@ int main(int argc, char** argv) {
         std::cerr << "cannot read " << argv[1] << " or " << argv[2] << " " << err << "\n";
         return 1;
     }
-    // Same power as the whole project: seed 1, 0.5 to 2 W/mm^2 (task J7).
-    assignSyntheticPower(d, 1, 0.5e-6, 2e-6);
+    // Power: seed 1 and a uniform density range in W/mm^2 (task J7). The default
+    // is the project's 0.5 to 2 W/mm^2; the environment variables POWER_MIN and
+    // POWER_MAX change it (J17 uses 0.1 to 10). 1 W/mm^2 = 1e-6 W/um^2.
+    double powerMin = std::getenv("POWER_MIN") ? std::atof(std::getenv("POWER_MIN")) : 0.5;
+    double powerMax = std::getenv("POWER_MAX") ? std::atof(std::getenv("POWER_MAX")) : 2.0;
+    assignSyntheticPower(d, 1, powerMin * 1e-6, powerMax * 1e-6);
 
     if (mode == "filled") {
         // The die is the bounding box enlarged to the outline, like powerGrid (I13).
