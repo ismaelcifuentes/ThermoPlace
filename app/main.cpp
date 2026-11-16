@@ -6,6 +6,7 @@
 //               [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]
 //               [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]
 //               [--thermal-weight W] [--heat-sink-h H] [--package-r R]
+//               [--power-min D] [--power-max D]
 // Examples:
 //   thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000
 //   thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1
@@ -51,6 +52,10 @@ struct Options {
     std::string runsCsv;  // empty = <out>/runs.csv
     bool thermal = false; // E11b: synthetic power + grid thermal model
     unsigned powerSeed = 1;
+    // E14. Power density range in W/mm^2. 0.5 to 2 is the range of the whole
+    // project (docs/SEMANA4.md); the sensitivity runs widen it.
+    double powerMin = 0.5;
+    double powerMax = 2.0;
     int gridN = 32;
     // E12. Package values start at the model defaults (Thermal.hpp), so the
     // calibration that lives there is not copied here.
@@ -65,21 +70,29 @@ struct Options {
 const int kSaGridN = 16;
 const double kSaTolerance = 1e-3;
 
-// Power density range used in the whole project (docs/SEMANA4.md): 0.5 to 2 W/mm^2,
-// written per benchmark unit (um^2) because that is what Block::area() returns.
-const double kMinPowerDensity = 0.5e-6;
-const double kMaxPowerDensity = 2.0e-6;
+const double kDefaultPowerMin = 0.5;  // W/mm^2, used to tell a default run from E14 runs
+const double kDefaultPowerMax = 2.0;
+
+// assignSyntheticPower multiplies by Block::area(), which is in benchmark units^2.
+// One mm^2 holds (1e-3 / scale)^2 of those, so with MCNC (scale 1e-6, um)
+// 1 W/mm^2 becomes 1e-6 W per um^2.
+double perUnitArea(double wattsPerMm2, double scale) {
+    double unitsPerMm = 1e-3 / scale;
+    return wattsPerMm2 / (unitsPerMm * unitsPerMm);
+}
 
 void usage() {
     std::cerr << "Usage: thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]\n"
               << "                   [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]\n"
               << "                   [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]\n"
               << "                   [--thermal-weight W] [--heat-sink-h H] [--package-r R]\n"
+              << "                   [--power-min D] [--power-max D]\n"
               << "  e.g. thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000\n"
               << "       thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1\n"
               << "  With --sa, --iters is ignored. With --outline-weight above 0, SA returns the best\n"
               << "  floorplan that fits the outline, if it found one.\n"
-              << "  --thermal gives each block a synthetic power (0.5 to 2 W/mm^2, --power-seed)\n"
+              << "  --thermal gives each block a synthetic power (--power-min to --power-max W/mm^2,\n"
+              << "  default 0.5 to 2, --power-seed)\n"
               << "  and solves the temperature on a --grid N x N grid (default 32).\n"
               << "  --thermal-weight W (needs --thermal and --sa) adds the peak temperature to the\n"
               << "  SA cost. --heat-sink-h and --package-r change the package model.\n";
@@ -104,6 +117,8 @@ bool parseArgs(int argc, char** argv, Options& o) {
         else if (a == "--runs-csv" && (v = next())) o.runsCsv = v;
         else if (a == "--thermal") o.thermal = true;
         else if (a == "--power-seed" && (v = next())) o.powerSeed = static_cast<unsigned>(std::atol(v));
+        else if (a == "--power-min" && (v = next())) o.powerMin = std::atof(v);
+        else if (a == "--power-max" && (v = next())) o.powerMax = std::atof(v);
         else if (a == "--grid" && (v = next())) o.gridN = std::atoi(v);
         else if (a == "--thermal-weight" && (v = next())) o.thermalWeight = std::atof(v);
         else if (a == "--heat-sink-h" && (v = next())) o.heatSinkH = std::atof(v);
@@ -127,6 +142,10 @@ bool parseArgs(int argc, char** argv, Options& o) {
     // heatSinkH = 0 would leave the die without a path to the ambient (no steady state).
     if (o.heatSinkH <= 0.0) { std::cerr << "--heat-sink-h must be positive\n"; return false; }
     if (o.packageR < 0.0) { std::cerr << "--package-r cannot be negative\n"; return false; }
+    if (o.powerMin < 0.0 || o.powerMax < o.powerMin) {
+        std::cerr << "--power-min must be at least 0 and --power-max at least --power-min\n";
+        return false;
+    }
     return true;
 }
 
@@ -172,6 +191,15 @@ void recordRun(const Design& d, const Options& o, const std::string& method, dou
 // table. Non-default settings go into the method name instead, e.g. "sa_c0.98_m2000".
 // The thermal weight is added the same way ("sa_t0.5"), because the Pareto front
 // (E13) needs to group the runs by weight.
+// E14. RunRecord has no power columns either, so a non-default density range
+// goes into the method name too ("sa_t0.5_p0.1-10", "random_p0.1-10").
+std::string powerSuffix(const Options& o) {
+    if (!o.thermal || (o.powerMin == kDefaultPowerMin && o.powerMax == kDefaultPowerMax)) return "";
+    char buf[64];
+    std::snprintf(buf, sizeof buf, "_p%g-%g", o.powerMin, o.powerMax);
+    return buf;
+}
+
 std::string saMethodName(const Options& o) {
     std::string name = "sa";
     char buf[64];
@@ -183,7 +211,7 @@ std::string saMethodName(const Options& o) {
         std::snprintf(buf, sizeof buf, "_t%g", o.thermalWeight);
         name += buf;
     }
-    return name;
+    return name + powerSuffix(o);
 }
 
 ThermalParams thermalParams(const Options& o, int gridN) {
@@ -267,9 +295,11 @@ int main(int argc, char** argv) {
     // Power goes with the block, not with its position, so it is assigned once here
     // and every floorplan the optimizer tries keeps the same powers.
     if (opt.thermal) {
-        assignSyntheticPower(d, opt.powerSeed, kMinPowerDensity, kMaxPowerDensity);
+        assignSyntheticPower(d, opt.powerSeed, perUnitArea(opt.powerMin, opt.scale),
+                             perUnitArea(opt.powerMax, opt.scale));
         double total = totalPower(d);
-        std::printf("Power: %.2f W total (seed %u, 0.5 to 2 W/mm^2)\n", total, opt.powerSeed);
+        std::printf("Power: %.2f W total (seed %u, %g to %g W/mm^2)\n", total, opt.powerSeed,
+                    opt.powerMin, opt.powerMax);
         if (total <= 0.0)
             std::cout << "  [warn] every block has 0 W, so the map will sit at ambient "
                          "(is assignSyntheticPower implemented yet?)\n";
@@ -419,7 +449,7 @@ int main(int argc, char** argv) {
             maxTemp = map.maxTemp;
             exportThermalFiles(d, map, opt);
         }
-        recordRun(d, opt, "random", secs, maxTemp);
+        recordRun(d, opt, "random" + powerSuffix(opt), secs, maxTemp);
     }
 
     return rep.ok ? 0 : 3;
