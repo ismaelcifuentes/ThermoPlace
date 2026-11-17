@@ -48,7 +48,7 @@ struct ThermalParams {
     double packageR = 0.20;         // K/W: spreader + heat sink + air, shared by the whole die
     int maxIterations = 20000;      // safety stop for Gauss-Seidel
     double omega = 0.0;             // SOR factor: 1 = plain Gauss-Seidel,
-                                    // 0 = automatic, 2 / (1 + sin(pi / (gridN + 1)))
+                                    // 0 = automatic, from the conductances (see Thermal.cpp)
     double tolerance = 1e-6;        // stop when the largest change in a sweep is below this (K)
     // WEEK 5: the die is the FIXED OUTLINE when the benchmark has one (and the
     // chip fits in it): the empty part of the die still spreads heat. Without

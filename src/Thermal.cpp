@@ -59,6 +59,7 @@ ThermalMap solveThermal(const Design& d, const ThermalParams& p) {
 }
 
 // I11: Gauss-Seidel with over-relaxation (SOR) on the heat-balance equation of every cell (see the header).
+// I16: the SOR factor is computed from the conductances of this grid.
 // I12: optional starting temperatures (warm start).
 ThermalMap solveThermal(const Design& d, const ThermalParams& p,
                         const std::vector<double>& initialTemp) {
@@ -89,8 +90,13 @@ ThermalMap solveThermal(const Design& d, const ThermalParams& p,
     const double gx = p.siliconK * p.dieThickness * h / w;  // left-right neighbours
     const double gy = p.siliconK * p.dieThickness * w / h;  // down-up neighbours
     const double gv = p.heatSinkH * w * h;                 // cell -> package node
-    const double pi = 3.14159265358979323846;
-    const double omega = (p.omega > 0.0) ? p.omega : 2.0 / (1.0 + std::sin(pi / (n + 1)));
+    // Automatic SOR factor (I16). The slowest error to remove is a uniform offset
+    // (the chip edges are adiabatic), which plain Jacobi shrinks by
+    // rho = (2 gx + 2 gy) / (2 gx + 2 gy + gv) per sweep; the classical optimum is
+    // omega = 2 / (1 + sqrt(1 - rho^2)). A strong path to the package (big gv)
+    // makes rho small and omega close to 1 (plain Gauss-Seidel is already fast).
+    const double rho = (2.0 * gx + 2.0 * gy) / (2.0 * gx + 2.0 * gy + gv);
+    const double omega = (p.omega > 0.0) ? p.omega : 2.0 / (1.0 + std::sqrt(1.0 - rho * rho));
 
     for (int it = 0; it < p.maxIterations; ++it) {
         double maxChange = 0.0;
