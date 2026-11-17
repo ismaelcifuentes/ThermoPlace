@@ -129,3 +129,19 @@ Qué cambia frente a E13:
 - **ami49:** la Tmax media baja 1,93 °C con el peso 0,25 (159,41 a 157,47 °C). Con 220 W en un die de 41 mm² la temperatura no es realista; esta fila sirve para ver la tendencia, no como un valor de diseño.
 - **Parte que depende de la colocación.** El nodo del paquete queda en 46,38 °C (ami33) y 89,01 °C (ami49). Sobre esa base, el peso 0,25 baja Tmax − T_paquete un 11 % en ami33 y un 3 % en ami49 (en E13, ami33 con el peso 0,25: 13 %). En proporción es parecido; lo que cambia es la escala: en ami33 la subida sobre el paquete es de 39,3 K, contra 8,9 K en E13, así que el mismo peso da casi 4 veces más grados y cuesta menos área. Con potencias más desiguales el término térmico tiene más que ganar.
 - **Pendiente:** J17 valida contra HotSpot un floorplan con este rango de potencia, para saber si el modelo sigue cerca de 1 °C cuando la potencia es tan desigual.
+
+## Escalabilidad en GSRC (semana 6, E6)
+
+SA con los valores por defecto (enfriamiento 0,95, 10·n movidas por temperatura), `--alpha 0.5`, semillas 1 a 5, sin outline (los archivos de GSRC no traen uno). Datos: `results/gsrc.csv` (no se sube), generado con `run_e6.bat`. Tiempos en la PC de Eimi (Windows 11, MinGW g++ -O2).
+
+| Benchmark | Bloques | Espacio muerto medio | Mejor espacio muerto | HPWL medio | Tiempo medio (s) |
+|---|---|---|---|---|---|
+| n100 | 100 | 9,06 % | 8,01 % | 237 142 | 6,16 |
+| n200 | 200 | 9,78 % | 9,02 % | 437 154 | 40,62 |
+| n300 | 300 | 10,68 % | 9,37 % | 625 451 | 118,45 |
+
+- **Tiempo.** De n100 a n300 el tiempo crece 19,2 veces, como n elevado a 2,7. Era de esperar algo cercano a n³: el SA hace 10·n movidas por temperatura y cada empaquetado cuesta O(n²) (cada uno de los n bloques consulta un contorno de hasta n segmentos), porque el contorno O(n) de [1] quedó fuera del alcance (`docs/PLAN.md`). Aun así, n300 tarda 118 s por corrida.
+- **Calidad.** El espacio muerto medio sube poco con el tamaño (9,1 %, 9,8 % y 10,7 %), sin cambiar el número de temperaturas.
+- **Outline fijo de 15 %.** Con `--outline-weight 5 --whitespace 0.15` (outline cuadrado de (1,15 · área de bloques)^½ de lado, como en la literatura de outline fijo), n100 cupo en 0 de 5 semillas, con 16,4 % de espacio muerto medio. La penalización de outline es cuadrática y relativa al outline: salirse 10 unidades de 454 en ancho y en alto suma unos 0,005 al costo, frente a unos 0,3 de área y HPWL, así que el SA no tiene casi nada que lo empuje adentro cuando el margen es pequeño. Con el 27 % de espacio libre de ami33 no pasaba. Hay que discutir con Jose (`src/Cost.cpp`) una penalización más fuerte cerca del borde.
+
+[1] Y.-C. Chang, Y.-W. Chang, G.-M. Wu y S.-W. Wu, "B*-Trees: A New Representation for Non-Slicing Floorplans", DAC 2000, pp. 458–463.
