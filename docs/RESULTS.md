@@ -77,6 +77,8 @@ Cada corrida deja `<bench>_best.svg` (bloques, contorno del chip en negro y outl
 
 Corridas: `--sa --outline-weight 5 --thermal --thermal-weight W`, pesos 0, 0,25, 0,5, 0,75 y 1, semillas 1 a 5, potencia de J7 (semilla 1, 0,5 a 2 W/mm²). Disipador calibrado contra HotSpot en `docs/VALIDATION.md`: `--heat-sink-h 1.4e5 --package-r 0.20`. Dentro del SA la temperatura se calcula con grilla 16; la Tmax de la tabla es la del mejor floorplan con grilla 32. Datos: `results/pareto.csv` (no se sube), generado con `run_e13.bat`. Tiempos en la PC de Eimi (Windows 11, MinGW g++ -O2).
 
+**Versión del código.** Corrido con el commit `1d76c82`, anterior a I16 (PR #26). I16 cambia el factor de SOR del solver térmico y, con él, un poco la trayectoria del SA cuando el peso térmico es mayor que 0. No se repitió: las corridas con peso 0 no usan la temperatura dentro del SA y dan lo mismo, y las demás pueden diferir un poco semilla por semilla.
+
 ### ami33
 
 | Peso térmico | Tmax media (°C) | Mejor Tmax (°C) | Espacio muerto medio | HPWL medio | Cabe | Tiempo medio (s) |
@@ -109,6 +111,8 @@ Qué muestran los datos:
 ## Sensibilidad a la potencia (semana 5, E14)
 
 Mismas corridas que E13 pero con densidades de potencia de **0,1 a 10 W/mm²** (semilla de potencia 1), pesos térmicos 0, 0,25 y 0,5, semillas 1 a 5: `--sa --outline-weight 5 --thermal --thermal-weight W --power-min 0.1 --power-max 10 --heat-sink-h 1.4e5 --package-r 0.20`. La potencia total sube a 6,91 W en ami33 y 220,05 W en ami49 (con 0,5 a 2 W/mm² era 1,61 y 50,5 W). Datos: `results/sensitivity.csv` (no se sube), generado con `run_e14.bat`. Tiempos en la PC de Eimi.
+
+**Versión del código.** Corrido con el commit `590fd9f`, anterior a I16 (PR #26), por la misma razón que E13. Además, J17 (`docs/VALIDATION.md`, sección 6) encontró que con este rango de potencia el modelo subestima la Tmax de ami49 en unos 7 °C frente a HotSpot, así que las temperaturas de ami49 de esta tabla sirven para comparar pesos entre sí, no como valores absolutos.
 
 | Benchmark | Peso térmico | Tmax media (°C) | Mejor Tmax (°C) | Espacio muerto medio | HPWL medio | Cabe | Tiempo medio (s) |
 |---|---|---|---|---|---|---|---|
