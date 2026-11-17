@@ -29,10 +29,10 @@ does each degree of peak temperature cost in extra area?
 4. Compute the steady-state temperature with a fast **grid thermal model**
    (Gauss-Seidel with over-relaxation on an N × N grid, week 4), put it into the SA
    cost and validate it against **HotSpot** using the exported `.flp` and `.ptrace`
-   files (week 5).
+   files (week 5, done).
 5. Measure scaling on GSRC n100–n300 and write a short paper (week 6).
 
-## Status (week 4, 5 Nov 2026)
+## Status (week 6, 17 Nov 2026)
 
 | Component | Owner | Status |
 |---|---|---|
@@ -40,19 +40,20 @@ does each degree of peak temperature cost in extra area?
 | Benchmark reader: MCNC (`.block`, `.nets`) and GSRC (`.hardblocks`, `.pl`, `.nets`) | Eimi | done |
 | B\*-tree + contour packing, `moveNode`, `moveSubtree` | Ismael | done |
 | Metrics (area, dead space, HPWL), outline check and overlap validator | Jose | done |
-| SVG picture (with fixed outline) + HotSpot `.flp` export | Jose | done |
+| SVG picture (with fixed outline), HotSpot `.flp` and `.ptrace`, heat map | Jose | done |
 | Simulated annealing (Metropolis, geometric cooling, best feasible solution) | Ismael | done |
-| Normalized cost: area, HPWL and outline penalty | Jose | done |
-| Command line options for SA, trace and runs CSV, convergence plot | Eimi, Jose | done |
+| Cost: area, HPWL, outline penalty and peak temperature rise | Jose | done |
+| Command line, trace and runs CSV, convergence plot | Eimi, Jose | done |
 | Results table against published work (`docs/RESULTS.md`) | Eimi, Jose | done |
-| Grid thermal model (`solveThermal`) | Ismael | done |
-| `max_temp_c` column in `runs.csv` (E11a) | Eimi | in review (PR #15) |
-| Synthetic power, `.ptrace`, heat map SVG, HotSpot setup (J7, J12, J13) | Jose | in progress |
-| `--thermal` option in the program (E11b) | Eimi | ready, waits for J7 |
-| Temperature inside the SA cost, HotSpot validation, Pareto front area vs. Tmax | team | week 5 |
+| Grid thermal model, two-part package, warm-start evaluator | Ismael | done |
+| Synthetic power, thermal options (`--thermal`, `--thermal-weight`, ...) | Jose, Eimi | done |
+| Validation against HotSpot and package calibration (`docs/VALIDATION.md`) | Jose | done |
+| Pareto front area vs. Tmax (E13) | Eimi | done |
+| Power sensitivity, 0.1 to 10 W/mm² (E14), validation with uneven power (J17) | Eimi, Jose | done |
+| Method section (`docs/report/METHOD.md`), calibrated defaults, SOR factor from the conductances (I16) | Ismael | done |
+| GSRC n100–n300 scalability (E6), report: Introduction, Related work | Eimi | in progress |
 
-The test suite has 52 tests. On `main` 48 pass; with PR #15 it is 49. The three
-left (`power_extra`, `exporters_extra`, `thermal_svg`) are Jose's week 4 tasks.
+All 57 tests pass on `main`.
 
 ### Results so far
 
@@ -74,9 +75,17 @@ ami49 (Table 2), optimizing area only and without a fixed outline; our best SA r
 1.28 mm² and 39.13 mm² while also fitting the outline. ami49 is hard to fit: its outline
 leaves only 13.4% free space.
 
-The thermal model was checked on ami33 and ami49 after SA (power 0.5 to 2 W/mm², seed 1):
-a 16 × 16 grid gives the same peak temperature as a 32 × 32 grid within 0.11 °C
-(`docs/SEMANA4.md`), which matters for week 5, when SA will call it thousands of times.
+**Thermal model.** Against HotSpot v7.0 (block mode) on the best floorplans of ami33 and
+ami49, the block temperatures of the 16 × 16 grid differ by 0.55 °C on average, with
+one pair of package values for both benchmarks (h = 1.4e5 W/(m²·K), R = 0.20 K/W). A
+16 × 16 solve takes under 0.5 ms (`docs/VALIDATION.md`). With much more uneven power
+(0.1 to 10 W/mm²) the error grows to 1.9 °C on ami33 and 3.7 °C on ami49 (J17).
+
+**Area against temperature.** With power densities of 0.5 to 2 W/mm², the thermal term
+lowers the peak temperature of ami33 by 1.75 °C for 16.7 more points of dead space; with
+0.1 to 10 W/mm², a weight of 0.25 lowers it by 4.33 °C for 1.9 points. Most of the
+temperature rise comes from the package and does not depend on the floorplan
+(`docs/RESULTS.md`, E13 and E14).
 
 Reproduce one SA run with
 `build\thermoplace.exe benchmarks\mcnc\ami33.block --sa --outline-weight 5 --seed 1`.
@@ -113,7 +122,9 @@ You can run one person's tests or one week's: `thermoplace_tests ismael | eimi |
 ```
 thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]
             [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]
-            [--runs-csv FILE]
+            [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]
+            [--thermal-weight W] [--heat-sink-h H] [--package-r R]
+            [--power-min D] [--power-max D]
 ```
 
 | Option | Default | Meaning |
@@ -128,19 +139,31 @@ thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]
 | `--cooling C` | 0.95 | temperature factor per SA step (0 to 1) |
 | `--moves-per-temp N` | 0 | moves per SA temperature; 0 means 10 × number of blocks |
 | `--runs-csv FILE` | `<out>/runs.csv` | table where each run adds one line |
-
-`--thermal`, `--power-seed` and `--grid` (E11b) are added once Jose's synthetic power (J7) is in `main`.
+| `--thermal` | off | synthetic power (0.5 to 2 W/mm²) and peak temperature of the initial and final floorplan |
+| `--power-seed N` | 1 | seed of the synthetic power |
+| `--grid N` | 32 | grid size of the reported temperature (N × N cells) |
+| `--thermal-weight W` | 0 | weight of the peak temperature rise in the SA cost (needs `--thermal --sa`); SA uses a 16 × 16 grid |
+| `--heat-sink-h H` | `Thermal.hpp` | die to spreader conductance, W/(m²·K) |
+| `--package-r R` | `Thermal.hpp` | lumped resistance of spreader, sink and air, K/W |
+| `--power-min D`, `--power-max D` | 0.5, 2 | range of the synthetic power density, W/mm² |
 
 ## Output
 
 For each run, `results/` gets:
 - `<benchmark>_initial.svg` / `<benchmark>_best.svg`: pictures of the floorplan, with the fixed outline in red,
 - `<benchmark>_initial.flp` / `<benchmark>_best.flp`: HotSpot floorplan files (meters),
-- `runs.csv`: one line per run (benchmark, method, seed, area, dead space, HPWL, fits outline, seconds).
+- `runs.csv`: one line per run (benchmark, method, seed, area, dead space, HPWL, fits outline, seconds, peak temperature).
+  Non-default settings go into the method name: `sa_c0.98_m2000`, `sa_t0.5`, `sa_t0.5_p0.1-10`.
 
 With `--sa` it also writes:
 - `<benchmark>_trace.csv`: cost and acceptance rate at each temperature step,
 - `<benchmark>_convergence.svg`: plot of the current and best cost.
+
+With `--thermal` it also writes:
+- `<benchmark>_best.ptrace`: block powers for HotSpot,
+- `<benchmark>_best.csv`: position, size and power of each block,
+- `<benchmark>_best_temps.csv`: temperature of each block,
+- `<benchmark>_thermal.svg`: heat map of the final floorplan.
 
 `runs.csv` files written before week 4 have one column less (`max_temp_c`); start a new one.
 
