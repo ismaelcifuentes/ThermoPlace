@@ -67,6 +67,9 @@ def compare(root, csv_name):
                 "max": max(diffs),
                 "tmax": max(temps.values()) - max(hs.values()),
                 "hs_tmax": max(hs.values()),
+                # MAE relative to the mean temperature rise of HotSpot's blocks
+                # over the 45 C ambient: lets us compare runs with more power.
+                "rel": 100.0 * mean(diffs) / mean([hs[n] - 45.0 for n in names]),
                 "ms": seconds * 1000.0,
             })
     return errors
@@ -103,12 +106,13 @@ def calibrate(root):
 
 def grids(root):
     errors = compare(root, "j15_grids.csv")
-    print("bench | grid | MAE (C) | max err (C) | Tmax err (C) | HotSpot Tmax (C) | time (ms)")
+    print("bench | grid | MAE (C) | MAE / rise (%) | max err (C) | Tmax err (C) | "
+          "HotSpot Tmax (C) | time (ms)")
     for bench in sorted({e["bench"] for rows in errors.values() for e in rows}):
         for key in sorted(errors):
             rows = [e for e in errors[key] if e["bench"] == bench]
             print(f"{bench} | {key[0]:2d} | {mean([e['mae'] for e in rows]):.3f} | "
-                  f"{max([e['max'] for e in rows]):.3f} | {mean([e['tmax'] for e in rows]):+.3f} | "
+                  f"{mean([e['rel'] for e in rows]):.1f} | {max([e['max'] for e in rows]):.3f} | {mean([e['tmax'] for e in rows]):+.3f} | "
                   f"{mean([e['hs_tmax'] for e in rows]):.2f} | {mean([e['ms'] for e in rows]):.2f}")
     print("joint MAE per grid: " + ", ".join(
         f"{key[0]}: {mean([e['mae'] for e in errors[key]]):.3f}" for key in sorted(errors)))
