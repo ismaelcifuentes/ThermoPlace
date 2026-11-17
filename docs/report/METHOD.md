@@ -1,6 +1,6 @@
 # Method (draft — Ismael)
 
-> Draft of the *Method* section of the final report. Everything here describes the code in `main` as of 12 November 2026. Validation numbers come from `docs/VALIDATION.md` (J15) and experimental results from `docs/RESULTS.md`.
+> Draft of the *Method* section of the final report. Everything here describes the code in `main` as of 16 November 2026. Validation numbers come from `docs/VALIDATION.md` (J15) and experimental results from `docs/RESULTS.md`.
 
 ThermoPlace has four parts that run in a loop: a **B\*-tree** that encodes a floorplan, a **packing** step that turns the tree into block coordinates, a **cost function** that scores the floorplan, and **simulated annealing (SA)**, which changes the tree and keeps or rejects each change. A **grid thermal model** adds the peak temperature to the cost. Figure 1 shows the loop.
 
@@ -59,7 +59,7 @@ C = \alpha\,\frac{A}{A_0} + (1-\alpha)\,\frac{L}{L_0} + \beta\,P_{\text{out}} + 
 $$
 
 - *A* is the area of the chip bounding box.
-- *L* is the half-perimeter wirelength (HPWL): for each net, the half perimeter of the smallest box that contains the centres of its blocks and its pads, summed over all nets with at least two pins.
+- *L* is the half-perimeter wirelength (HPWL): for each net, the half perimeter of the smallest box that contains the centres of its blocks and its pads, summed over all nets with at least two pins. Block centres use the placed (possibly rotated) size, every net has weight 1, and pads stay at the coordinates given by the benchmark.
 - *P*<sub>out</sub> penalizes overflowing the fixed outline. With *e<sub>W</sub>* = max(0, *W* − *W<sub>o</sub>*) and *e<sub>H</sub>* = max(0, *H* − *H<sub>o</sub>*), we use *P*<sub>out</sub> = (*e<sub>W</sub>* / *W<sub>o</sub>*)² + (*e<sub>H</sub>* / *H<sub>o</sub>*)², which is 0 whenever the chip fits.
 - Δ*T* = *T*<sub>max</sub> − *T*<sub>amb</sub> is the peak temperature rise (Section 6).
 
@@ -110,9 +110,11 @@ Cells on the edge of the die have no neighbour on that side (adiabatic boundary)
 
 ### 6.3 Solver
 
-We solve the *N*² equations with Gauss–Seidel iteration with successive over-relaxation (SOR). Each sweep updates every cell with the newest values of its neighbours, moving it a factor ω past the plain Gauss–Seidel value, with ω = 2 / (1 + sin(π / (*N* + 1))). The sweeps stop when no cell changes by more than a tolerance (10⁻⁶ K for reporting, 10⁻³ K inside SA). SOR cut the number of sweeps by up to 9× in our tests (ami33, *N* = 32: 679 sweeps instead of 6006); the gain grows with *N*.
+We solve the *N*² equations with Gauss–Seidel iteration with successive over-relaxation (SOR). Each sweep updates every cell with the newest values of its neighbours, moving it a factor ω past the plain Gauss–Seidel value. The sweeps stop when no cell changes by more than a tolerance (10⁻⁶ K for reporting, 10⁻³ K inside SA).
 
-Inside SA the temperature is computed for every move. We use *N* = 16, which gave a peak temperature within 0.01 K (ami33) and 0.1 K (ami49) of *N* = 32, and a **warm start**: each solve begins from the previous temperature map instead of the ambient, since two consecutive SA floorplans are almost the same. With these settings a thermal-aware SA run takes about 6–7 s on ami33 and ami49, against 0.2–0.6 s without temperature.
+We choose ω from the conductances of the grid. Because the die edges are adiabatic, the slowest error to remove is a uniform offset, which plain Jacobi iteration shrinks by ρ = (2*g<sub>x</sub>* + 2*g<sub>y</sub>*) / (2*g<sub>x</sub>* + 2*g<sub>y</sub>* + *g<sub>v</sub>*) per sweep; we use the classical optimum ω = 2 / (1 + √(1 − ρ²)). A strong path to the package (large *g<sub>v</sub>*) gives a small ρ and ω close to 1. On the best SA floorplans with *N* = 32, SOR needs 115 sweeps instead of 1862 on ami33 (16× fewer) and 43 instead of 112 on ami49 (2.6× fewer). The gain is smaller on ami49 because its cells are larger, so each cell is coupled more strongly to the package than to its neighbours.
+
+Inside SA the temperature is computed for every move. We use *N* = 16, which gives practically the same accuracy against HotSpot as *N* = 32 (Section 7), and a **warm start**: each solve begins from the previous temperature map instead of the ambient, since two consecutive SA floorplans are almost the same. With these settings a solve inside SA takes about 29 sweeps on ami33 and 10 on ami49 on average, and a thermal-aware SA run takes about 3 s (ami33) and 2 s (ami49), against 0.2–0.6 s without temperature (same machine).
 
 For validation, we also compute the temperature of each block as the area-weighted average of the cells it covers. This matches the block-level output of HotSpot.
 
@@ -133,7 +135,9 @@ We validate the fast model against HotSpot v7.0 [4] in block mode, with its `exa
 
 With *N* = 16, the error in *T*<sub>max</sub> is +0.5 °C on ami33 and −1.4 °C on ami49, and the worst block of the 10 floorplans is off by 2.3 °C. A HotSpot run takes about 16 ms (ami33) and 99 ms (ami49), including start-up and file reading.
 
-**Limits.** The calibration was fitted and evaluated on the same 10 floorplans, with one power assignment and one HotSpot package configuration; with another package the calibrated values change. HotSpot in block mode is itself a model, not a measurement.
+**Uneven power.** We repeated the comparison with a much more uneven power density (0.1–10 W/mm², about 4.3× more total power) without recalibrating. Recalibrating gives the same pair (*h* = 1.41·10⁵, *R*<sub>pkg</sub> = 0.20), so the calibration does not depend on the power. On ami33 the MAE grows to 1.87 °C only because there is more power: relative to the temperature rise it stays at 5.8 % (5.9 % before). On ami49 the model gets worse: the MAE is 3.73 °C (5.0 % of the rise, *N* = 16), the worst block is off by 12.7 °C and *T*<sub>max</sub> is underestimated by about 7 °C. Neither a finer grid (*N* = 64) nor a calibration for ami49 alone removes this, so with strongly uneven power our temperatures should be read as relative (which floorplan is cooler) rather than absolute.
+
+**Limits.** The calibration was fitted and evaluated on the same 10 floorplans, with one power seed and one HotSpot package configuration; with another package the calibrated values change. HotSpot in block mode is itself a model, not a measurement.
 
 ## 8. Implementation
 
