@@ -105,3 +105,23 @@ Qué muestran los datos:
 - **ami49:** la mejor media es 68,66 °C, 0,55 °C menos que sin peso. Las diferencias entre pesos son del mismo tamaño que la dispersión entre semillas (puntos tenues de la figura), y el peso 1 queda por encima del 0,75.
 - **Por qué el efecto es pequeño.** Con el paquete de dos partes (I15), toda la potencia pasa por `packageR`, que sube el nodo del paquete a 45 + 0,20 · P: 45,32 °C en ami33 y 55,11 °C en ami49 (calculado con la potencia total de J7). Esa parte no depende de dónde va cada bloque. Lo que la colocación sí cambia es Tmax − T_paquete: en ami33 baja de 8,91 a 7,17 K (20 %), y en ami49 de 14,11 a 13,55 K (4 %).
 - **Límites.** Una sola asignación de potencia (semilla 1) y un solo par de valores del disipador. Con potencias más desiguales entre bloques, o con un disipador peor, el término térmico podría pesar más; falta probarlo.
+
+## Sensibilidad a la potencia (semana 5, E14)
+
+Mismas corridas que E13 pero con densidades de potencia de **0,1 a 10 W/mm²** (semilla de potencia 1), pesos térmicos 0, 0,25 y 0,5, semillas 1 a 5: `--sa --outline-weight 5 --thermal --thermal-weight W --power-min 0.1 --power-max 10 --heat-sink-h 1.4e5 --package-r 0.20`. La potencia total sube a 6,91 W en ami33 y 220,05 W en ami49 (con 0,5 a 2 W/mm² era 1,61 y 50,5 W). Datos: `results/sensitivity.csv` (no se sube), generado con `run_e14.bat`. Tiempos en la PC de Eimi.
+
+| Benchmark | Peso térmico | Tmax media (°C) | Mejor Tmax (°C) | Espacio muerto medio | HPWL medio | Cabe | Tiempo medio (s) |
+|---|---|---|---|---|---|---|---|
+| ami33 | 0 | 85,68 | 82,77 | 15,63 % | 92 976 | 5/5 | 0,49 |
+| ami33 | 0,25 | 81,35 | 80,55 | 17,54 % | 93 683 | 5/5 | 13,33 |
+| ami33 | 0,5 | 80,80 | 80,37 | 24,00 % | 108 490 | 5/5 | 14,72 |
+| ami49 | 0 | 159,41 | 159,09 | 11,90 % | 1 020 173 | 3/5 | 1,42 |
+| ami49 | 0,25 | 157,47 | 155,32 | 12,08 % | 998 921 | 2/5 | 24,09 |
+| ami49 | 0,5 | 157,69 | 155,71 | 14,21 % | 1 010 857 | 2/5 | 24,71 |
+
+Qué cambia frente a E13:
+
+- **ami33:** con el peso 0,25 la Tmax media baja 4,33 °C (85,68 a 81,35 °C) con 1,9 puntos más de espacio muerto, y los 5 floorplans caben. Con 0,5 a 2 W/mm² el mismo peso bajaba 1,14 °C con 3,3 puntos más. El peso 0,5 casi no agrega: 4,89 °C en total, pero el espacio muerto sube a 24,0 %.
+- **ami49:** la Tmax media baja 1,93 °C con el peso 0,25 (159,41 a 157,47 °C). Con 220 W en un die de 41 mm² la temperatura no es realista; esta fila sirve para ver la tendencia, no como un valor de diseño.
+- **Parte que depende de la colocación.** El nodo del paquete queda en 46,38 °C (ami33) y 89,01 °C (ami49). Sobre esa base, el peso 0,25 baja Tmax − T_paquete un 11 % en ami33 y un 3 % en ami49 (en E13, ami33 con el peso 0,25: 13 %). En proporción es parecido; lo que cambia es la escala: en ami33 la subida sobre el paquete es de 39,3 K, contra 8,9 K en E13, así que el mismo peso da casi 4 veces más grados y cuesta menos área. Con potencias más desiguales el término térmico tiene más que ganar.
+- **Pendiente:** J17 valida contra HotSpot un floorplan con este rango de potencia, para saber si el modelo sigue cerca de 1 °C cuando la potencia es tan desigual.
