@@ -6,7 +6,7 @@
 //               [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]
 //               [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]
 //               [--thermal-weight W] [--heat-sink-h H] [--package-r R]
-//               [--power-min D] [--power-max D]
+//               [--power-min D] [--power-max D] [--whitespace G]
 // Examples:
 //   thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000
 //   thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1
@@ -14,6 +14,7 @@
 //   thermoplace benchmarks/mcnc/ami33.block --sa --outline-weight 5 --thermal --seed 1
 //   thermoplace benchmarks/mcnc/ami33.block --sa --outline-weight 5 --thermal --thermal-weight 0.5
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -56,6 +57,10 @@ struct Options {
     // project (docs/SEMANA4.md); the sensitivity runs widen it.
     double powerMin = 0.5;
     double powerMax = 2.0;
+    // E6. GSRC files have no fixed outline. Fixed-outline papers build one from the
+    // block area and a whitespace fraction (Adya and Markov, TVLSI 2003), usually 15 %
+    // with aspect ratio 1. Negative = do not add an outline.
+    double whitespace = -1.0;
     int gridN = 32;
     // E12. Package values start at the model defaults (Thermal.hpp), so the
     // calibration that lives there is not copied here.
@@ -86,13 +91,15 @@ void usage() {
               << "                   [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]\n"
               << "                   [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]\n"
               << "                   [--thermal-weight W] [--heat-sink-h H] [--package-r R]\n"
-              << "                   [--power-min D] [--power-max D]\n"
+              << "                   [--power-min D] [--power-max D] [--whitespace G]\n"
               << "  e.g. thermoplace benchmarks/mcnc/ami33.block --out results --iters 20000\n"
               << "       thermoplace benchmarks/mcnc/ami33.block --sa --alpha 0.5 --seed 1\n"
               << "  With --sa, --iters is ignored. With --outline-weight above 0, SA returns the best\n"
               << "  floorplan that fits the outline, if it found one.\n"
               << "  --thermal gives each block a synthetic power (--power-min to --power-max W/mm^2,\n"
               << "  default 0.5 to 2, --power-seed)\n"
+              << "  --whitespace G gives a benchmark without outline (GSRC) a square outline with\n"
+              << "  a fraction G of free space, e.g. 0.15.\n"
               << "  and solves the temperature on a --grid N x N grid (default 32).\n"
               << "  --thermal-weight W (needs --thermal and --sa) adds the peak temperature to the\n"
               << "  SA cost. --heat-sink-h and --package-r change the package model.\n";
@@ -119,6 +126,7 @@ bool parseArgs(int argc, char** argv, Options& o) {
         else if (a == "--power-seed" && (v = next())) o.powerSeed = static_cast<unsigned>(std::atol(v));
         else if (a == "--power-min" && (v = next())) o.powerMin = std::atof(v);
         else if (a == "--power-max" && (v = next())) o.powerMax = std::atof(v);
+        else if (a == "--whitespace" && (v = next())) o.whitespace = std::atof(v);
         else if (a == "--grid" && (v = next())) o.gridN = std::atoi(v);
         else if (a == "--thermal-weight" && (v = next())) o.thermalWeight = std::atof(v);
         else if (a == "--heat-sink-h" && (v = next())) o.heatSinkH = std::atof(v);
@@ -142,6 +150,9 @@ bool parseArgs(int argc, char** argv, Options& o) {
     // heatSinkH = 0 would leave the die without a path to the ambient (no steady state).
     if (o.heatSinkH <= 0.0) { std::cerr << "--heat-sink-h must be positive\n"; return false; }
     if (o.packageR < 0.0) { std::cerr << "--package-r cannot be negative\n"; return false; }
+    // Above 1 the free space would be larger than the blocks themselves; it is almost
+    // certainly a percentage typed by mistake (15 instead of 0.15).
+    if (o.whitespace > 1.0) { std::cerr << "--whitespace is a fraction, e.g. 0.15 for 15 %\n"; return false; }
     if (o.powerMin < 0.0 || o.powerMax < o.powerMin) {
         std::cerr << "--power-min must be at least 0 and --power-max at least --power-min\n";
         return false;
@@ -291,6 +302,19 @@ int main(int argc, char** argv) {
     std::cout << "Design " << d.name << ": " << d.blocks.size() << " blocks, "
               << d.terminals.size() << " terminals, " << d.nets.size() << " nets, outline "
               << d.outlineW << " x " << d.outlineH << ", block area " << d.totalBlockArea() << "\n";
+
+    // E6. Square outline whose area is (1 + whitespace) times the block area.
+    if (opt.whitespace >= 0.0) {
+        if (d.outlineW > 0.0 && d.outlineH > 0.0) {
+            std::cout << "  [note] --whitespace ignored: " << d.name << " has its own outline\n";
+        } else {
+            double side = std::sqrt((1.0 + opt.whitespace) * d.totalBlockArea());
+            d.outlineW = side;
+            d.outlineH = side;
+            std::printf("Outline: %.0f x %.0f (%.0f %% whitespace, aspect ratio 1)\n", side, side,
+                        100.0 * opt.whitespace);
+        }
+    }
 
     // Power goes with the block, not with its position, so it is assigned once here
     // and every floorplan the optimizer tries keeps the same powers.
