@@ -32,7 +32,7 @@ struct CostNorm {
 CostNorm makeNorm(const Metrics& m);
 
 // 0 if the design has no outline (outlineW or outlineH <= 0) or the chip fits.
-// Otherwise (exW / outlineW)^2 + (exH / outlineH)^2, where
+// Otherwise exW / outlineW + exH / outlineH (linear since J18), where
 // exW = max(0, chipW - outlineW) and exH = max(0, chipH - outlineH).
 double outlinePenalty(const Metrics& m, const Design& d);
 

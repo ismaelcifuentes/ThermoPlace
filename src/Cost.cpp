@@ -23,10 +23,13 @@ double outlinePenalty(const Metrics& m, const Design& d) {
     double exW = std::max(0.0, m.chipW - d.outlineW);
     double exH = std::max(0.0, m.chipH - d.outlineH);
 
-    // Relative excess, squared: small overflows cost little, big ones a lot.
+    // Relative excess, added LINEARLY (task J18). A squared excess made small
+    // overflows almost free (2 % out -> 0.0004), so with a tight outline SA
+    // never pushed the chip the last bit inside. Linear keeps the same push
+    // (2 % out -> 0.02) all the way to the border.
     double rw = exW / d.outlineW;
     double rh = exH / d.outlineH;
-    return rw * rw + rh * rh;
+    return rw + rh;
 }
 
 double computeCost(const Metrics& m, const Design& d, const CostWeights& w,
