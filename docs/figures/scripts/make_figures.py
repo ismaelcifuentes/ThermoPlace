@@ -13,6 +13,9 @@ import csv
 import os
 import sys
 
+# Do not leave a __pycache__ folder in tools/ when we import j15_compare.py.
+sys.dont_write_bytecode = True
+
 import matplotlib
 
 matplotlib.use("Agg")
