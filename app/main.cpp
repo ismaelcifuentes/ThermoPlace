@@ -98,11 +98,11 @@ void usage() {
               << "  floorplan that fits the outline, if it found one.\n"
               << "  --thermal gives each block a synthetic power (--power-min to --power-max W/mm^2,\n"
               << "  default 0.5 to 2, --power-seed)\n"
-              << "  --whitespace G gives a benchmark without outline (GSRC) a square outline with\n"
-              << "  a fraction G of free space, e.g. 0.15.\n"
               << "  and solves the temperature on a --grid N x N grid (default 32).\n"
               << "  --thermal-weight W (needs --thermal and --sa) adds the peak temperature to the\n"
-              << "  SA cost. --heat-sink-h and --package-r change the package model.\n";
+              << "  SA cost. --heat-sink-h and --package-r change the package model.\n"
+              << "  --whitespace G gives a benchmark without outline (GSRC) a square outline with\n"
+              << "  a fraction G of free space, e.g. 0.15.\n";
 }
 
 bool parseArgs(int argc, char** argv, Options& o) {
