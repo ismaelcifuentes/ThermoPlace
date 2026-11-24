@@ -77,6 +77,8 @@ Cada corrida deja `<bench>_best.svg` (bloques, contorno del chip en negro y outl
 
 Corridas: `--sa --outline-weight 5 --thermal --thermal-weight W`, pesos 0, 0,25, 0,5, 0,75 y 1, semillas 1 a 5, potencia de J7 (semilla 1, 0,5 a 2 W/mm²). Disipador calibrado contra HotSpot en `docs/VALIDATION.md`: `--heat-sink-h 1.4e5 --package-r 0.20`. Dentro del SA la temperatura se calcula con grilla 16; la Tmax de la tabla es la del mejor floorplan con grilla 32. Datos: `results/pareto.csv` (no se sube), generado con `run_e13.bat`. Tiempos en la PC de Eimi (Windows 11, MinGW g++ -O2).
 
+**Versión del código.** Corrido con el commit `1d76c82`, anterior a I16 (PR #26). I16 cambia el factor de SOR del solver térmico y, con él, un poco la trayectoria del SA cuando el peso térmico es mayor que 0. No se repitió: las corridas con peso 0 no usan la temperatura dentro del SA y dan lo mismo, y las demás pueden diferir un poco semilla por semilla.
+
 ### ami33
 
 | Peso térmico | Tmax media (°C) | Mejor Tmax (°C) | Espacio muerto medio | HPWL medio | Cabe | Tiempo medio (s) |
@@ -110,6 +112,8 @@ Qué muestran los datos:
 
 Mismas corridas que E13 pero con densidades de potencia de **0,1 a 10 W/mm²** (semilla de potencia 1), pesos térmicos 0, 0,25 y 0,5, semillas 1 a 5: `--sa --outline-weight 5 --thermal --thermal-weight W --power-min 0.1 --power-max 10 --heat-sink-h 1.4e5 --package-r 0.20`. La potencia total sube a 6,91 W en ami33 y 220,05 W en ami49 (con 0,5 a 2 W/mm² era 1,61 y 50,5 W). Datos: `results/sensitivity.csv` (no se sube), generado con `run_e14.bat`. Tiempos en la PC de Eimi.
 
+**Versión del código.** Corrido con el commit `590fd9f`, anterior a I16 (PR #26), por la misma razón que E13. Además, J17 (`docs/VALIDATION.md`, sección 6) encontró que con este rango de potencia el modelo subestima la Tmax de ami49 en unos 7 °C frente a HotSpot, así que las temperaturas de ami49 de esta tabla sirven para comparar pesos entre sí, no como valores absolutos.
+
 | Benchmark | Peso térmico | Tmax media (°C) | Mejor Tmax (°C) | Espacio muerto medio | HPWL medio | Cabe | Tiempo medio (s) |
 |---|---|---|---|---|---|---|---|
 | ami33 | 0 | 85,68 | 82,77 | 15,63 % | 92 976 | 5/5 | 0,49 |
@@ -132,3 +136,19 @@ Qué cambia frente a E13:
   | ami49 | 152,52 → 151,94 °C (−0,58) | 159,48 → 157,64 °C (−1,84) | 1/5 |
 
   En **ami33** la mejora es real: HotSpot también baja la Tmax en las 5 semillas, unos 3,5 °C. Nuestro modelo la exagera en unos 0,7 °C (un 20 %). En **ami49** no se puede confirmar: los dos modelos no coinciden ni en la dirección del cambio en 4 de 5 semillas, y ninguno de los floorplans de peso 0,25 cupo en el outline (con un die más grande la comparación no es directa).
+
+## Escalabilidad en GSRC (semana 6, E6)
+
+SA con los valores por defecto (enfriamiento 0,95, 10·n movidas por temperatura), `--alpha 0.5`, semillas 1 a 5, sin outline (los archivos de GSRC no traen uno). Datos: `results/gsrc.csv` (no se sube), generado con `run_e6.bat`. Tiempos en la PC de Eimi (Windows 11, MinGW g++ -O2).
+
+| Benchmark | Bloques | Espacio muerto medio | Mejor espacio muerto | HPWL medio | Tiempo medio (s) |
+|---|---|---|---|---|---|
+| n100 | 100 | 9,06 % | 8,01 % | 237 142 | 6,16 |
+| n200 | 200 | 9,78 % | 9,02 % | 437 154 | 40,62 |
+| n300 | 300 | 10,68 % | 9,37 % | 625 451 | 118,45 |
+
+- **Tiempo.** De n100 a n300 el tiempo crece 19,2 veces, como n elevado a 2,7. Era de esperar algo cercano a n³: el SA hace 10·n movidas por temperatura y cada empaquetado cuesta O(n²) (cada uno de los n bloques consulta un contorno de hasta n segmentos), porque el contorno O(n) de [1] quedó fuera del alcance (`docs/PLAN.md`). Aun así, n300 tarda 118 s por corrida.
+- **Calidad.** El espacio muerto medio sube poco con el tamaño (9,1 %, 9,8 % y 10,7 %), sin cambiar el número de temperaturas.
+- **Outline fijo de 15 %.** Con `--outline-weight 5 --whitespace 0.15` (outline cuadrado de (1,15 · área de bloques)^½ de lado, como en la literatura de outline fijo), n100 cupo en 0 de 5 semillas, con 16,4 % de espacio muerto medio. La penalización de outline es cuadrática y relativa al outline: salirse 10 unidades de 454 en ancho y en alto suma unos 0,005 al costo, frente a unos 0,3 de área y HPWL, así que el SA no tiene casi nada que lo empuje adentro cuando el margen es pequeño. Con el 27 % de espacio libre de ami33 no pasaba. Hay que discutir con Jose (`src/Cost.cpp`) una penalización más fuerte cerca del borde.
+
+[1] Y.-C. Chang, Y.-W. Chang, G.-M. Wu y S.-W. Wu, "B*-Trees: A New Representation for Non-Slicing Floorplans", DAC 2000, pp. 458–463.
