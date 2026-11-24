@@ -174,8 +174,8 @@ TEST(cost, norm_from_metrics) {
 TEST(cost, outline_penalty) {
     Design d = costDesign();
     CHECK_NEAR(outlinePenalty(fakeMetrics(8, 5, 0), d), 0, 1e-12);       // fits
-    CHECK_NEAR(outlinePenalty(fakeMetrics(15, 5, 0), d), 0.25, 1e-12);   // (5/10)^2
-    CHECK_NEAR(outlinePenalty(fakeMetrics(15, 10, 0), d), 1.25, 1e-12);  // 0.25 + (5/5)^2
+    CHECK_NEAR(outlinePenalty(fakeMetrics(15, 5, 0), d), 0.5, 1e-12);    // 5/10
+    CHECK_NEAR(outlinePenalty(fakeMetrics(15, 10, 0), d), 1.5, 1e-12);   // 0.5 + 5/5
     Design free = costDesign();
     free.outlineW = 0;
     free.outlineH = 0;
