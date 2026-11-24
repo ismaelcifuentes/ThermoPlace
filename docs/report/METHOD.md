@@ -1,6 +1,6 @@
 # Method (draft — Ismael)
 
-> Draft of the *Method* section of the final report. Everything here describes the code in `main` as of 16 November 2026. Validation numbers come from `docs/VALIDATION.md` (J15) and experimental results from `docs/RESULTS.md`.
+> Draft of the *Method* section of the final report. Everything here describes the code tagged `v1.0` (code freeze, 24 November 2026). Validation numbers come from `docs/VALIDATION.md` (J15) and experimental results from `docs/RESULTS.md`.
 
 ThermoPlace has four parts that run in a loop: a **B\*-tree** that encodes a floorplan, a **packing** step that turns the tree into block coordinates, a **cost function** that scores the floorplan, and **simulated annealing (SA)**, which changes the tree and keeps or rejects each change. A **grid thermal model** adds the peak temperature to the cost. Figure 1 shows the loop.
 
@@ -22,7 +22,7 @@ ThermoPlace has four parts that run in a loop: a **B\*-tree** that encodes a flo
 
 A benchmark gives a set of *n* rectangular hard blocks with width *w<sub>i</sub>* and height *h<sub>i</sub>*, a set of nets (each net connects blocks and fixed I/O pads), and optionally a fixed outline *W<sub>o</sub>* × *H<sub>o</sub>*. A floorplan assigns to every block a lower-left corner (*x<sub>i</sub>*, *y<sub>i</sub>*) and an orientation (0° or 90°), with no two blocks overlapping. We look for a floorplan that is small, has short wires, fits the outline, and — in the thermal-aware version — has a low peak temperature.
 
-We use the MCNC benchmarks ami33 (33 blocks, 121 nets) and ami49 (49 blocks), whose outlines are 1326 × 1205 and 5336 × 7673 µm, and the GSRC n100–n300 benchmarks for scalability.
+We use the MCNC benchmarks ami33 (33 blocks, 121 nets) and ami49 (49 blocks), whose outlines are 1326 × 1205 and 5336 × 7673 µm, and the GSRC n100–n300 benchmarks for scalability. The GSRC files have no outline; for fixed-outline runs we use a square outline with 15 % white space, side (1.15 · total block area)<sup>1/2</sup>, as is common in the fixed-outline literature.
 
 ## 2. B\*-tree representation and packing
 
@@ -60,7 +60,7 @@ $$
 
 - *A* is the area of the chip bounding box.
 - *L* is the half-perimeter wirelength (HPWL): for each net, the half perimeter of the smallest box that contains the centres of its blocks and its pads, summed over all nets with at least two pins. Block centres use the placed (possibly rotated) size, every net has weight 1, and pads stay at the coordinates given by the benchmark.
-- *P*<sub>out</sub> penalizes overflowing the fixed outline. With *e<sub>W</sub>* = max(0, *W* − *W<sub>o</sub>*) and *e<sub>H</sub>* = max(0, *H* − *H<sub>o</sub>*), we use *P*<sub>out</sub> = (*e<sub>W</sub>* / *W<sub>o</sub>*)² + (*e<sub>H</sub>* / *H<sub>o</sub>*)², which is 0 whenever the chip fits.
+- *P*<sub>out</sub> penalizes overflowing the fixed outline. With *e<sub>W</sub>* = max(0, *W* − *W<sub>o</sub>*) and *e<sub>H</sub>* = max(0, *H* − *H<sub>o</sub>*), we use *P*<sub>out</sub> = *e<sub>W</sub>* / *W<sub>o</sub>* + *e<sub>H</sub>* / *H<sub>o</sub>*, which is 0 whenever the chip fits. We first used the squared version, (*e<sub>W</sub>* / *W<sub>o</sub>*)² + (*e<sub>H</sub>* / *H<sub>o</sub>*)². It worked with the 27 % white space of ami33, but with a tight outline it made small overflows almost free (2 % out adds 0.0004), so SA did not push the chip the last bit inside: on GSRC n100 with 15 % white space, 0 of 5 runs fitted. The linear penalty keeps the same push all the way to the border (2 % out adds 0.02); with it, all 5 runs fit (`docs/RESULTS.md`, E6).
 - Δ*T* = *T*<sub>max</sub> − *T*<sub>amb</sub> is the peak temperature rise (Section 6).
 
 We use α = 0.5, β = 5 for the fixed-outline experiments, and γ from 0 to 1 for the area–temperature trade-off.
