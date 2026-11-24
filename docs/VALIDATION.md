@@ -116,7 +116,19 @@ MAE conjunto con 0,1–10 W/mm²: 2,80 °C (N = 16), 2,65 °C (N = 32).
 1. **La calibración no depende de la potencia.** El mejor (h, R) es el mismo con 0,5–2 y con 0,1–10 W/mm², así que los valores por defecto siguen siendo válidos.
 2. **ami33: el error crece solo porque hay más potencia.** En relativo queda igual (5,9 % → 5,8 %). En °C pasa de 0,44 a 1,87, por encima del ~1 °C buscado.
 3. **ami49: la potencia desigual sí empeora el modelo.** El error relativo sube de 3,7 % a 5,0 % (N = 16), el peor bloque llega a 12,7 °C de error, y el modelo **subestima la Tmax en unos 7 °C**. No es por la grilla (con N = 64 sigue en 6,8 °C) ni por la calibración (calibrando solo ami49, el MAE no baja de 2,9 °C). Es un límite del modelo con bloques muy calientes junto a bloques casi apagados. No sabemos todavía la causa exacta; una posibilidad es que nuestro camino vertical (un solo `heatSinkH` por m²) reparta el calor de un bloque caliente más que las capas de HotSpot (interfaz, spreader y disipador por separado).
-4. **Consecuencia para el frente de Pareto.** Con 0,1–10 W/mm², la Tmax absoluta de nuestro modelo puede estar hasta unos 7 °C por debajo de la de HotSpot en ami49. Para el informe conviene confirmar en HotSpot que los floorplans con peso térmico de verdad bajan la Tmax (próximo paso, cuando E14 permita generar esos floorplans con esta potencia).
+4. **¿El peso térmico baja la Tmax de verdad? (17 nov)** Se generaron con el programa (E14) los floorplans de peso 0 y 0,25, con 0,1–10 W/mm², semillas 1 a 5, y se pasaron por HotSpot:
+
+   ```bash
+   build/thermoplace benchmarks/mcnc/ami33.block --sa --outline-weight 5 --thermal \
+       --thermal-weight 0.25 --power-min 0.1 --power-max 10 --seed 1
+   ```
+
+   | Benchmark | Tmax nuestra, peso 0 → 0,25 | Tmax HotSpot, peso 0 → 0,25 | Baja en los dos |
+   |---|---|---|---|
+   | ami33 | 84,53 → 80,33 °C (−4,20) | 82,68 → 79,14 °C (−3,54) | 5/5 semillas |
+   | ami49 | 152,52 → 151,94 °C (−0,58) | 159,48 → 157,64 °C (−1,84) | 1/5 semillas |
+
+   (Tmax por bloque: la temperatura del bloque más caliente, en los dos modelos.) En **ami33** la mejora se confirma en HotSpot, aunque nuestro modelo la exagera en unos 0,7 °C. En **ami49** no: los dos modelos no coinciden ni en la dirección del cambio en 4 de 5 semillas, que es lo esperable con un error de 3–4 °C y cambios de 1–2 °C. Además, ningún floorplan de peso 0,25 cupo en el outline, así que su die es más grande y la comparación no es directa. Con esta potencia, el modelo sirve para decidir en ami33 pero no para ordenar floorplans de ami49.
 
 ## 7. Primera versión (5 nov): solo `heatSinkH`
 

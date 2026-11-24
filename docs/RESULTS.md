@@ -128,7 +128,14 @@ Qué cambia frente a E13:
 - **ami33:** con el peso 0,25 la Tmax media baja 4,33 °C (85,68 a 81,35 °C) con 1,9 puntos más de espacio muerto, y los 5 floorplans caben. Con 0,5 a 2 W/mm² el mismo peso bajaba 1,14 °C con 3,3 puntos más. El peso 0,5 casi no agrega: 4,89 °C en total, pero el espacio muerto sube a 24,0 %.
 - **ami49:** la Tmax media baja 1,93 °C con el peso 0,25 (159,41 a 157,47 °C). Con 220 W en un die de 41 mm² la temperatura no es realista; esta fila sirve para ver la tendencia, no como un valor de diseño.
 - **Parte que depende de la colocación.** El nodo del paquete queda en 46,38 °C (ami33) y 89,01 °C (ami49). Sobre esa base, el peso 0,25 baja Tmax − T_paquete un 11 % en ami33 y un 3 % en ami49 (en E13, ami33 con el peso 0,25: 13 %). En proporción es parecido; lo que cambia es la escala: en ami33 la subida sobre el paquete es de 39,3 K, contra 8,9 K en E13, así que el mismo peso da casi 4 veces más grados y cuesta menos área. Con potencias más desiguales el término térmico tiene más que ganar.
-- **Pendiente:** J17 valida contra HotSpot un floorplan con este rango de potencia, para saber si el modelo sigue cerca de 1 °C cuando la potencia es tan desigual.
+- **Validación en HotSpot (J17, Jose).** Con este rango de potencia el modelo ya no queda a 1 °C de HotSpot: el error medio por bloque es 1,9 °C en ami33 y 3,7 °C en ami49, donde la Tmax queda unos 7 °C por debajo (`docs/VALIDATION.md`, sección 6). Para ver si el peso térmico baja la Tmax **de verdad**, se pasaron por HotSpot los floorplans de peso 0 y 0,25, semillas 1 a 5, generados con el `main` actual (con I16, así que no son exactamente los de esta tabla). Tmax por bloque (la del bloque más caliente, en los dos modelos):
+
+  | Benchmark | Tmax nuestra, peso 0 → 0,25 | Tmax HotSpot, peso 0 → 0,25 | Semillas en que baja en los dos |
+  |---|---|---|---|
+  | ami33 | 84,53 → 80,33 °C (−4,20) | 82,68 → 79,14 °C (−3,54) | 5/5 |
+  | ami49 | 152,52 → 151,94 °C (−0,58) | 159,48 → 157,64 °C (−1,84) | 1/5 |
+
+  En **ami33** la mejora es real: HotSpot también baja la Tmax en las 5 semillas, unos 3,5 °C. Nuestro modelo la exagera en unos 0,7 °C (un 20 %). En **ami49** no se puede confirmar: los dos modelos no coinciden ni en la dirección del cambio en 4 de 5 semillas, y ninguno de los floorplans de peso 0,25 cupo en el outline (con un die más grande la comparación no es directa).
 
 ## Escalabilidad en GSRC (semana 6, E6)
 
