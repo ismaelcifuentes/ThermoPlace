@@ -30,9 +30,9 @@ does each degree of peak temperature cost in extra area?
    (Gauss-Seidel with over-relaxation on an N × N grid, week 4), put it into the SA
    cost and validate it against **HotSpot** using the exported `.flp` and `.ptrace`
    files (week 5, done).
-5. Measure scaling on GSRC n100–n300 and write a short paper (week 6).
+5. Measure scaling on GSRC n100–n300 (week 6, done) and write the final report (week 6).
 
-## Status (week 6, 17 Nov 2026)
+## Status (week 6, 24 Nov 2026)
 
 | Component | Owner | Status |
 |---|---|---|
@@ -51,7 +51,9 @@ does each degree of peak temperature cost in extra area?
 | Pareto front area vs. Tmax (E13) | Eimi | done |
 | Power sensitivity, 0.1 to 10 W/mm² (E14), validation with uneven power (J17) | Eimi, Jose | done |
 | Method section (`docs/report/METHOD.md`), calibrated defaults, SOR factor from the conductances (I16) | Ismael | done |
-| GSRC n100–n300 scalability (E6), report: Introduction, Related work | Eimi | in progress |
+| GSRC n100–n300 scalability (E6), `--whitespace` outline for GSRC | Eimi | done |
+| Report: Introduction and Related work (`docs/report/`) | Eimi | done |
+| Report: Experiments, Results, final edition | team | in progress |
 
 All 57 tests pass on `main`.
 
@@ -87,6 +89,11 @@ lowers the peak temperature of ami33 by 1.75 °C for 16.7 more points of dead sp
 temperature rise comes from the package and does not depend on the floorplan
 (`docs/RESULTS.md`, E13 and E14).
 
+**Scalability (GSRC).** SA without outline, seeds 1 to 5: the mean time goes from
+6.16 s for n100 to 40.62 s for n200 and 118.45 s for n300, about n^2.7, because each
+packing is O(n²) and SA makes 10·n moves per temperature. Mean dead space stays between
+9.1% and 10.7% (`docs/RESULTS.md`, E6).
+
 Reproduce one SA run with
 `build\thermoplace.exe benchmarks\mcnc\ami33.block --sa --outline-weight 5 --seed 1`.
 
@@ -115,7 +122,7 @@ cmake -S . -B build && cmake --build build
 ```
 
 Run the tests **from the repository root** (they read `benchmarks/` and write to `results/`).
-You can run one person's tests or one week's: `thermoplace_tests ismael | eimi | jose | core | extra | week2 | week3 | week4`.
+You can run one person's tests or one week's: `thermoplace_tests ismael | eimi | jose | core | extra | week2 | week3 | week4 | week5`.
 
 ## Command line
 
@@ -124,7 +131,7 @@ thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]
             [--sa] [--alpha A] [--outline-weight W] [--cooling C] [--moves-per-temp N]
             [--runs-csv FILE] [--thermal] [--power-seed N] [--grid N]
             [--thermal-weight W] [--heat-sink-h H] [--package-r R]
-            [--power-min D] [--power-max D]
+            [--power-min D] [--power-max D] [--whitespace G]
 ```
 
 | Option | Default | Meaning |
@@ -146,6 +153,7 @@ thermoplace <blocks-file> [--out DIR] [--scale S] [--seed N] [--iters N]
 | `--heat-sink-h H` | `Thermal.hpp` | die to spreader conductance, W/(m²·K) |
 | `--package-r R` | `Thermal.hpp` | lumped resistance of spreader, sink and air, K/W |
 | `--power-min D`, `--power-max D` | 0.5, 2 | range of the synthetic power density, W/mm² |
+| `--whitespace G` | off | for a benchmark without fixed outline (GSRC): a square outline of side ((1 + G) × block area)^½, e.g. 0.15 for 15% free space; ignored if the benchmark has its own outline |
 
 ## Output
 
