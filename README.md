@@ -32,7 +32,7 @@ does each degree of peak temperature cost in extra area?
    files (week 5, done).
 5. Measure scaling on GSRC n100–n300 (week 6, done) and write the final report (week 6).
 
-## Status (week 6, 24 Nov 2026)
+## Status (week 6, 25 Nov 2026, tag `v1.0`)
 
 | Component | Owner | Status |
 |---|---|---|
@@ -55,44 +55,47 @@ does each degree of peak temperature cost in extra area?
 | Report: Introduction and Related work (`docs/report/`) | Eimi | done |
 | Report: Experiments, Results, final edition | team | in progress |
 
-All 57 tests pass on `main`.
+All 57 tests pass on `main` and on `v1.0`.
 
-### Results so far
+### Results (v1.0)
 
-ami33 and ami49, seeds 1 to 5, `--alpha 0.5`. Mean over the 5 seeds; "fits" counts the
-seeds whose floorplan is inside the benchmark's fixed outline. Times are from one
-Windows 11 PC (MinGW g++ -O2). Full tables, best values and sources: [docs/RESULTS.md](docs/RESULTS.md).
+All numbers below were run with the tag `v1.0` (linear outline penalty, calibrated package), seeds 1 to 5,
+`--alpha 0.5`. Mean over the 5 seeds; "fits" counts the seeds whose floorplan is inside the benchmark's
+fixed outline. Times are from one Windows 11 PC (MinGW g++ -O2). Full tables, best values, sources and the
+results with the old quadratic penalty: [docs/RESULTS.md](docs/RESULTS.md).
 
 | Benchmark | Method | Dead space | HPWL | Fits | Time (s) |
 |---|---|---|---|---|---|
-| ami33 | random search, 20 000 iterations | 23.27% | 146 156 | 0/5 | 0.15 |
-| ami33 | SA, `--outline-weight 5` | 15.63% | 92 976 | 5/5 | 0.59 |
-| ami33 | SA, `--outline-weight 5 --cooling 0.98 --moves-per-temp 2000` | 12.77% | 84 265 | 5/5 | 9.77 |
-| ami49 | random search, 20 000 iterations | 26.11% | 2 107 536 | 0/5 | 0.27 |
-| ami49 | SA, `--outline-weight 5` | 11.90% | 1 020 173 | 3/5 | 1.67 |
-| ami49 | SA, `--outline-weight 5 --cooling 0.98 --moves-per-temp 2000` | 10.80% | 906 049 | 2/5 | 17.06 |
+| ami33 | random search, 20 000 iterations | 23.27% | 146 156 | 0/5 | 0.12 |
+| ami33 | SA, `--outline-weight 5` | 11.72% | 87 244 | 5/5 | 0.56 |
+| ami33 | SA, `--outline-weight 5 --cooling 0.98 --moves-per-temp 2000` | 10.02% | 77 910 | 5/5 | 9.80 |
+| ami49 | random search, 20 000 iterations | 26.11% | 2 107 536 | 0/5 | 0.26 |
+| ami49 | SA, `--outline-weight 5` | 12.07% | 1 042 650 | 5/5 | 1.66 |
+| ami49 | SA, `--outline-weight 5 --cooling 0.98 --moves-per-temp 2000` | 10.48% | 845 151 | 5/5 | 16.89 |
 
-For reference, the original B\*-tree paper reports 1.27 mm² for ami33 and 36.80 mm² for
-ami49 (Table 2), optimizing area only and without a fixed outline; our best SA runs give
-1.28 mm² and 39.13 mm² while also fitting the outline. ami49 is hard to fit: its outline
-leaves only 13.4% free space.
+With the linear outline penalty (J18) every SA run fits its outline, including ami49, whose outline leaves
+only 13.4% free space. For reference, the original B\*-tree paper reports 1.27 mm² for ami33
+and 36.80 mm² for ami49 (Table 2), optimizing area only and without a fixed outline; our best SA runs give
+1.245 mm² and 38.67 mm² while also fitting the outline and optimizing wirelength.
 
 **Thermal model.** Against HotSpot v7.0 (block mode) on the best floorplans of ami33 and
-ami49, the block temperatures of the 16 × 16 grid differ by 0.55 °C on average, with
+ami49, the block temperatures of the 16 × 16 grid differ by 0.53 °C on average, with
 one pair of package values for both benchmarks (h = 1.4e5 W/(m²·K), R = 0.20 K/W). A
-16 × 16 solve takes under 0.5 ms (`docs/VALIDATION.md`). With much more uneven power
-(0.1 to 10 W/mm²) the error grows to 1.9 °C on ami33 and 3.7 °C on ami49 (J17).
+16 × 16 solve takes under 0.4 ms (`docs/VALIDATION.md`). With much more uneven power
+(0.1 to 10 W/mm²) the error grows to 1.9 °C on ami33 and 3.6 °C on ami49 (J17).
 
-**Area against temperature.** With power densities of 0.5 to 2 W/mm², the thermal term
-lowers the peak temperature of ami33 by 1.75 °C for 16.7 more points of dead space; with
-0.1 to 10 W/mm², a weight of 0.25 lowers it by 4.33 °C for 1.9 points. Most of the
-temperature rise comes from the package and does not depend on the floorplan
-(`docs/RESULTS.md`, E13 and E14).
+**Area against temperature.** With power densities of 0.5 to 2 W/mm², a thermal weight of 1 lowers the
+peak temperature of ami33 by 1.40 °C for 10.4 more points of dead space;
+with 0.1 to 10 W/mm², a weight of 0.25 lowers it by 5.72 °C for 5.2 points, and HotSpot confirms
+a drop of 3.7 °C. On ami49 the thermal weight does not lower the peak temperature: its outline leaves too
+little free space to move the hot blocks apart. Most of the temperature rise comes from the package and does
+not depend on the floorplan (`docs/RESULTS.md`, E13 and E14).
 
 **Scalability (GSRC).** SA without outline, seeds 1 to 5: the mean time goes from
-6.16 s for n100 to 40.62 s for n200 and 118.45 s for n300, about n^2.7, because each
+7.81 s for n100 to 52.47 s for n200 and 154.89 s for n300, about n^2.7, because each
 packing is O(n²) and SA makes 10·n moves per temperature. Mean dead space stays between
-9.1% and 10.7% (`docs/RESULTS.md`, E6).
+9.1% and 10.7%. With a fixed outline of 15% free space, n100 fits in 5/5 seeds
+(10.7% dead space; 0/5 with the old quadratic penalty) (`docs/RESULTS.md`, E6).
 
 Reproduce one SA run with
 `build\thermoplace.exe benchmarks\mcnc\ami33.block --sa --outline-weight 5 --seed 1`.
