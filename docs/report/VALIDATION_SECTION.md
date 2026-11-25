@@ -34,12 +34,12 @@ The minimum is clear in *h*: a 10 % change raises the error little, a factor of 
 |---|---|---|---|
 | 8 | 0.63 | 3.0 | 0.05 / 0.03 |
 | **16** | **0.53** | **2.0** | **0.36 / 0.15** |
-| 32 | 0.53 | 2.2 | 3.2 / 1.2 |
+| 32 | 0.53 | 2.1 | 3.2 / 1.2 |
 | 64 | 0.53 | 2.1 | 26.8 / 9.6 |
 
 *Table 4.2. Error against HotSpot and solve time by grid size (h = 1.4·10⁵, R*<sub>pkg</sub> *= 0.20).*
 
-A 16 × 16 grid is enough: the joint MAE is the same as with 64 × 64, while the solve is 65–75 times faster. With *N* = 16 the error in *T*<sub>max</sub> is +0.6 °C on ami33 and −0.9 °C on ami49. A HotSpot run takes 16–31 ms on ami33 and 99–177 ms on ami49. That time includes starting the program and reading files, so the comparison is approximate, but our solve is at least 40 times faster. This is what makes it possible to compute the temperature for every one of the ~60 000–90 000 moves of an SA run.
+A 16 × 16 grid is enough: the joint MAE is the same as with 64 × 64, while the solve is 64–75 times faster. With *N* = 16 the error in *T*<sub>max</sub> is +0.6 °C on ami33 and −0.9 °C on ami49. A HotSpot run takes 16–31 ms on ami33 and 99–177 ms on ami49. That time includes starting the program and reading files, so the comparison is approximate, but our solve is at least 40 times faster. This is what makes it possible to compute the temperature for every one of the ~60 000–90 000 moves of an SA run.
 
 ## 4.4 Strongly uneven power
 
