@@ -120,24 +120,7 @@ For validation, we also compute the temperature of each block as the area-weight
 
 ## 7. Validation against HotSpot
 
-We validate the fast model against HotSpot v7.0 [4] in block mode, with its `example.config` package (details and scripts in `docs/VALIDATION.md` and `tools/`). For the best floorplans of ami33 and ami49 (seeds 1–5, 10 floorplans), we export HotSpot's floorplan (`.flp`) and power trace (`.ptrace`), fill the empty parts of the die with 0 W blocks (HotSpot requires a floorplan without gaps), and compare HotSpot's block temperatures with ours. The error measure is the mean absolute error (MAE) over the blocks of a floorplan, averaged over the 10 floorplans.
-
-**Package calibration.** With the per-area part only, no single *h* fitted both benchmarks: the best common value left an MAE of 4.7 °C, and the best values for each benchmark differed by a factor of 2. With the two-part package, a grid search over *h* (10⁴–10⁷ W/(m²·K)) and *R*<sub>pkg</sub> (0–1 K/W) found one pair for both: *h* = 1.4·10⁵ W/(m²·K) and *R*<sub>pkg</sub> = 0.20 K/W, with a joint MAE of 0.53 °C (grid 32).
-
-**Grid size.** With these values, *N* = 16 is enough:
-
-| Grid *N* | Joint MAE (°C) | Solve time, ami33 / ami49 (ms) |
-|---|---|---|
-| 8 | 0.61 | 0.06 / 0.04 |
-| 16 | 0.55 | 0.42 / 0.25 |
-| 32 | 0.53 | 3.97 / 2.14 |
-| 64 | 0.53 | 32.8 / 17.6 |
-
-With *N* = 16, the error in *T*<sub>max</sub> is +0.5 °C on ami33 and −1.4 °C on ami49, and the worst block of the 10 floorplans is off by 2.3 °C. A HotSpot run takes about 16 ms (ami33) and 99 ms (ami49), including start-up and file reading.
-
-**Uneven power.** We repeated the comparison with a much more uneven power density (0.1–10 W/mm², about 4.3× more total power) without recalibrating. Recalibrating gives the same pair (*h* = 1.41·10⁵, *R*<sub>pkg</sub> = 0.20), so the calibration does not depend on the power. On ami33 the MAE grows to 1.87 °C only because there is more power: relative to the temperature rise it stays at 5.8 % (5.9 % before). On ami49 the model gets worse: the MAE is 3.73 °C (5.0 % of the rise, *N* = 16), the worst block is off by 12.7 °C and *T*<sub>max</sub> is underestimated by about 7 °C. Neither a finer grid (*N* = 64) nor a calibration for ami49 alone removes this, so with strongly uneven power our temperatures should be read as relative (which floorplan is cooler) rather than absolute.
-
-**Limits.** The calibration was fitted and evaluated on the same 10 floorplans, with one power seed and one HotSpot package configuration; with another package the calibrated values change. HotSpot in block mode is itself a model, not a measurement.
+Moved to its own section of the report: `docs/report/VALIDATION_SECTION.md` (Section 4), with the `v1.0` numbers.
 
 ## 8. Implementation
 
