@@ -9,7 +9,8 @@ Todas corridas con la etiqueta `v1.0`. Cada figura está en PNG (diapositivas) y
 | `fig4_error_vs_grid` | 4 | Error contra HotSpot y tiempo de cálculo según la grilla: 16 × 16 tiene el mismo error que 64 × 64 (0,53 °C) y es 60–75 veces más rápida | Jose |
 | `fig6_ami33_convergence` | 6 | Convergencia del SA en ami33 (semilla 1): el mejor costo baja de 2,42 a 0,34 en 180 temperaturas | Jose |
 | `demo_ami33_run.png` / `.gif` | demo (plan B) | Salida del programa en ami33 con peso 0,25. El GIF muestra las líneas como aparecen en la corrida real | Jose |
-| `pareto_e13.svg` | 5 | Frente de Pareto área vs. Tmax (E13) | Eimi |
+| `pareto_e13` | 5 | Frente de Pareto área vs. Tmax (E13, 0,5 a 2 W/mm²): en ami33 el peso térmico 1 baja la Tmax 1,4 °C con 10 puntos más de espacio muerto; en ami49 la Tmax no se mueve (±0,4 °C), porque su outline deja solo 13,4 % libre | Eimi |
+| `gsrc_time` | 7 | Tiempo medio del SA en GSRC sin outline: 7,8 s (n100), 52,5 s (n200) y 155 s (n300), crece como n^2,7 | Eimi |
 
 Datos de las figuras 3 y 3b: semilla 5, potencia de 0,1 a 10 W/mm² (6,91 W), grilla 32. Se eligió la semilla 5 porque su bajada en HotSpot (−3,5 °C) es la más cercana a la media de las 5 semillas (−3,7 °C).
 
@@ -48,5 +49,13 @@ python3 docs/figures/scripts/terminal_capture.py build/fig/demo.txt \
     "./build/thermoplace benchmarks/mcnc/ami33.block --out results --sa --outline-weight 5 --thermal --thermal-weight 0.25 --power-min 0.1 --power-max 10 --seed 5" \
     docs/figures/demo_ami33_run
 ```
+
+Figuras 5 y 7 (y las tablas de `docs/RESULTS.md`): `run_v1.bat` de Eimi deja `results/v1/runs.csv`, `pareto.csv`, `sensitivity.csv` y `gsrc.csv`; luego
+
+```bash
+python3 docs/figures/scripts/make_results_v1.py results/v1 <CSV viejos, penalización cuadrática> docs/RESULTS.md docs/RESULTS.md docs/figures README.md README.md
+```
+
+Los tiempos de la figura 7 son los de la PC de Eimi (Windows 11, MinGW g++ -O2).
 
 `scripts/thermal_grid.cpp` usa el mismo modelo térmico que el programa (grilla 32, valores por defecto de `v1.0`) y solo exporta la temperatura de cada celda; la Tmax que da es la misma que imprime el programa.
