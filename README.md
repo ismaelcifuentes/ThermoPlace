@@ -88,8 +88,8 @@ one pair of package values for both benchmarks (h = 1.4e5 W/(m²·K), R = 0.20 K
 peak temperature of ami33 by 1.40 °C for 10.4 more points of dead space;
 with 0.1 to 10 W/mm², a weight of 0.25 lowers it by 5.72 °C for 5.2 points, and HotSpot confirms
 a drop of 3.7 °C. On ami49 the thermal weight does not lower the peak temperature: its outline leaves too
-little free space to move the hot blocks apart. Most of the temperature rise comes from the package and does
-not depend on the floorplan (`docs/RESULTS.md`, E13 and E14).
+little free space to move the hot blocks apart. The floorplan cannot change the package node (45 °C + R · P);
+the best weight lowers the rest of the rise by 16% on ami33 and 2% on ami49 (`docs/RESULTS.md`, E13 and E14).
 
 **Scalability (GSRC).** SA without outline, seeds 1 to 5: the mean time goes from
 7.81 s for n100 to 52.47 s for n200 and 154.89 s for n300, about n^2.7, because each

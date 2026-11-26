@@ -164,6 +164,8 @@ def best_seed(rs):
 bests = {b: best_seed(new["runs"][(b, "sa_c0.98_m2000", "5")]) for b in ("ami33", "ami49")}
 b33, b49 = bests["ami33"], bests["ami49"]
 pub_head, pub_notes = published.split("Notas sobre esta tabla:")
+# On a RESULTS.md already made by this script, drop the paragraph it is about to write again.
+pub_head = pub_head.split("**Nuestro mejor resultado frente a [1].**")[0]
 w(pub_head.rstrip())
 w("")
 w(f"**Nuestro mejor resultado frente a [1].** Con `v1.0`, el mejor SA largo da "
@@ -470,7 +472,9 @@ print("ok")
 if len(sys.argv) > 7:
     RD_IN, RD_OUT = sys.argv[6], sys.argv[7]
     rd = open(RD_IN, encoding="utf-8").read()
-    i, j = rd.index("### Results so far"), rd.index("Reproduce one SA run with")
+    # The section was called "Results so far" before v1.0 and "Results (v1.0)" after.
+    head = "### Results (v1.0)" if "### Results (v1.0)" in rd else "### Results so far"
+    i, j = rd.index(head), rd.index("Reproduce one SA run with")
 
     def en(x, d):
         return f"{x:,.{d}f}".replace(",", " ")
@@ -511,8 +515,9 @@ if len(sys.argv) > 7:
     r_(f"with 0.1 to 10 W/mm², a weight of 0.25 lowers it by {s0 - s25:.2f} °C for "
        f"{ds(S, 'ami33', 'sa_t0.25_p0.1-10') - ds(S, 'ami33', 'sa_p0.1-10'):.1f} points, and HotSpot confirms")
     r_("a drop of 3.7 °C. On ami49 the thermal weight does not lower the peak temperature: its outline leaves too")
-    r_("little free space to move the hot blocks apart. Most of the temperature rise comes from the package and does")
-    r_("not depend on the floorplan (`docs/RESULTS.md`, E13 and E14).")
+    r_("little free space to move the hot blocks apart. The floorplan cannot change the package node (45 °C + R · P);")
+    r_(f"the best weight lowers the rest of the rise by {100 * (a0 - a1) / (a0 - p33):.0f}% on ami33 and "
+       f"{100 * (b0 - min(b_all)) / (b0 - p49):.0f}% on ami49 (`docs/RESULTS.md`, E13 and E14).")
     r_("")
     r_(f"**Scalability (GSRC).** SA without outline, seeds 1 to 5: the mean time goes from")
     r_(f"{times['n100']:.2f} s for n100 to {times['n200']:.2f} s for n200 and {times['n300']:.2f} s for n300, about n^{expo:.1f}, because each")
