@@ -73,7 +73,7 @@ results with the old quadratic penalty: [docs/RESULTS.md](docs/RESULTS.md).
 | ami49 | SA, `--outline-weight 5` | 12.07% | 1 042 650 | 5/5 | 1.66 |
 | ami49 | SA, `--outline-weight 5 --cooling 0.98 --moves-per-temp 2000` | 10.48% | 845 151 | 5/5 | 16.89 |
 
-With the linear outline penalty (J18) every SA run fits its outline, including ami49, whose outline leaves
+With the linear outline penalty (J18) every SA run without the thermal term fits its outline, including ami49, whose outline leaves
 only 13.4% free space. For reference, the original B\*-tree paper reports 1.27 mm² for ami33
 and 36.80 mm² for ami49 (Table 2), optimizing area only and without a fixed outline; our best SA runs give
 1.245 mm² and 38.67 mm² while also fitting the outline and optimizing wirelength.

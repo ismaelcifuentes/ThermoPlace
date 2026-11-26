@@ -33,7 +33,7 @@ SA halves the dead space of random search on both benchmarks and cuts HPWL by 40
 | ami49, SA long | 10.80 → 10.48 | 906 049 → 845 151 | 2/5 → 5/5 |
 | n100, outline with 15 % free space | 16.42 → 10.67 | 288 915 → 256 414 | 0/5 → 5/5 |
 
-With the linear penalty every SA run fits. The largest change is on the tight outlines: ami49 (13.4 % free space) goes from 3/5 and 2/5 to 5/5, and GSRC n100 with 15 % free space from 0/5 to 5/5. On ami33, whose outline leaves 27.6 % free space, all runs already fitted, but the linear penalty still lowers dead space by 3.9 points and HPWL by 6 % with the default schedule: the outline keeps pulling the chip together until the last unit. The only cost is on ami49 with the default schedule, where HPWL rises by 2.2 % now that the two seeds that used to fall outside the outline have to fit.
+With the linear penalty every run in Table 6.2 fits. The largest change is on the tight outlines: ami49 (13.4 % free space) goes from 3/5 and 2/5 to 5/5, and GSRC n100 with 15 % free space from 0/5 to 5/5. On ami33, whose outline leaves 27.6 % free space, all runs already fitted, but the linear penalty still lowers dead space by 3.9 points and HPWL by 6 % with the default schedule: the outline keeps pulling the chip together until the last unit. The only cost is on ami49 with the default schedule, where HPWL rises by 2.2 % now that the two seeds that used to fall outside the outline have to fit.
 
 ## 6.2 Area–temperature trade-off
 
