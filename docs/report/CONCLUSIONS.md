@@ -1,0 +1,15 @@
+# 7. Conclusions and limitations (draft — Ismael)
+
+> Section 7 of the final report. Numbers come from `docs/VALIDATION.md` and `docs/RESULTS.md`, run with the tag `v1.0`.
+
+We built ThermoPlace, a fixed-outline floorplanner in C++17 that places the blocks of a chip with a B\*-tree and simulated annealing and adds the peak temperature to the cost through a fast grid thermal model. We set out to answer how simple that thermal model can be while still agreeing with HotSpot, and how much area each degree of peak temperature costs.
+
+**A simple model is enough, if the package is right.** A plain 16 × 16 grid with a two-parameter package stays within 0.53 °C of HotSpot per block on average on ami33 and ami49, and solves in under 0.4 ms, at least 40 times faster than a HotSpot run. A finer grid did not help: 64 × 64 gave the same 0.53 °C. What mattered was the package. A per-area heat sink alone could not fit two dies of very different sizes (4.7 °C of error), while adding one lumped resistance, which models a spreader and heat sink much larger than the die, reduced the error almost tenfold with a single pair of values for both benchmarks.
+
+**The floorplanner is competitive.** With a linear outline penalty every SA run fits the fixed outline, including GSRC n100 with only 15 % free space, where a quadratic penalty failed in all runs. On ami33 our best floorplan has 1.245 mm², below the 1.27 mm² reported for the original B\*-tree, which optimizes area alone, while we also optimize wirelength and respect the outline. On ami49 we stay 5 % above the published area (38.67 vs 36.80 mm²).
+
+**Temperature can be traded for area, and the gain is real.** On ami33 with strongly uneven power, a thermal weight of 0.25 lowers the peak temperature by 5.7 °C in our model for 5.2 more points of dead space. HotSpot confirms a drop of 3.7 °C in all five seeds. The floorplan cannot change the package node (45 °C + *R*<sub>pkg</sub> · *P*); it can only change the rise above it, and the thermal term lowers that part by 15 % on ami33 with uneven power and by 16 % with the default power, but by only 2 % on ami49.
+
+**Limitations.** The thermal model loses accuracy with strongly uneven power on ami49, where it underestimates the peak by about 5 °C, and there the thermal term does not lower the temperature at all, because the outline leaves only 13.4 % free space. The calibration and validation use two benchmarks, one power seed, synthetic power, one HotSpot package and no separate test set. Packing costs O(*n*²), so runtime grows as about *n*<sup>2.7</sup> on GSRC (155 s per run for n300).
+
+**Future work.** The O(*n*) linked-list contour of the original B\*-tree and the Fast-SA schedule would cut runtime on large designs. Validating with real power traces and other packages, and with a held-out set of floorplans, would show how far the calibration generalizes. Finally, the same model could guide chiplet placement on an interposer, where the dies are larger and the spacing between them is free to choose.
