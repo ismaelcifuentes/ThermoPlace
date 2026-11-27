@@ -92,7 +92,7 @@ Each block spreads its power over the cells it covers, in proportion to the cove
 - a **per-area** part (die → heat spreader), with conductance *h* per m² of die;
 - a **lumped** part (spreader, heat sink and air) with resistance *R*<sub>pkg</sub>, shared by the whole die. At steady state all the power crosses it, so the node between the two parts sits at *T*<sub>pkg</sub> = *T*<sub>amb</sub> + *R*<sub>pkg</sub> *P*.
 
-We started with the per-area part only. Validation against HotSpot (Section 7) showed that no single *h* fits both ami33 and ami49, whose dies differ in area by a factor of 26: in HotSpot the spreader and sink are fixed and much larger than either die, so their resistance does not scale with die area. The lumped term models exactly that.
+We started with the per-area part only. Validation against HotSpot (Section 4) showed that no single *h* fits both ami33 and ami49, whose dies differ in area by a factor of 26: in HotSpot the spreader and sink are fixed and much larger than either die, so their resistance does not scale with die area. The lumped term models exactly that.
 
 With cells of size *a* × *b* (in metres), die thickness *t* and silicon conductivity *k*, the conductances are
 
@@ -106,7 +106,7 @@ $$
 P_{ij} + g_v\,(T_{\text{pkg}} - T_{ij}) + g_x\,(T_{i,j-1} + T_{i,j+1} - 2T_{ij}) + g_y\,(T_{i-1,j} + T_{i+1,j} - 2T_{ij}) = 0 .
 $$
 
-Cells on the edge of the die have no neighbour on that side (adiabatic boundary). We use *t* = 0.15 mm, *T*<sub>amb</sub> = 45 °C and *k* = 130 W/(m·K), the values of the HotSpot v7.0 example configuration [4]. *h* and *R*<sub>pkg</sub> are calibrated against HotSpot (Section 7): *h* = 1.4·10⁵ W/(m²·K) and *R*<sub>pkg</sub> = 0.20 K/W.
+Cells on the edge of the die have no neighbour on that side (adiabatic boundary). We use *t* = 0.15 mm, *T*<sub>amb</sub> = 45 °C and *k* = 130 W/(m·K), the values of the HotSpot v7.0 example configuration [4]. *h* and *R*<sub>pkg</sub> are calibrated against HotSpot (Section 4): *h* = 1.4·10⁵ W/(m²·K) and *R*<sub>pkg</sub> = 0.20 K/W.
 
 ### 6.3 Solver
 
@@ -114,7 +114,7 @@ We solve the *N*² equations with Gauss–Seidel iteration with successive over-
 
 We choose ω from the conductances of the grid. Because the die edges are adiabatic, the slowest error to remove is a uniform offset, which plain Jacobi iteration shrinks by ρ = (2*g<sub>x</sub>* + 2*g<sub>y</sub>*) / (2*g<sub>x</sub>* + 2*g<sub>y</sub>* + *g<sub>v</sub>*) per sweep; we use the classical optimum ω = 2 / (1 + √(1 − ρ²)). A strong path to the package (large *g<sub>v</sub>*) gives a small ρ and ω close to 1. On the best SA floorplans with *N* = 32, SOR needs 115 sweeps instead of 1862 on ami33 (16× fewer) and 43 instead of 112 on ami49 (2.6× fewer). The gain is smaller on ami49 because its cells are larger, so each cell is coupled more strongly to the package than to its neighbours.
 
-Inside SA the temperature is computed for every move. We use *N* = 16, which gives practically the same accuracy against HotSpot as *N* = 32 (Section 7), and a **warm start**: each solve begins from the previous temperature map instead of the ambient, since two consecutive SA floorplans are almost the same. With these settings a solve inside SA takes about 29 sweeps on ami33 and 10 on ami49 on average, and a thermal-aware SA run takes about 3 s (ami33) and 2 s (ami49), against 0.2–0.6 s without temperature (same machine).
+Inside SA the temperature is computed for every move. We use *N* = 16, which gives practically the same accuracy against HotSpot as *N* = 32 (Section 4), and a **warm start**: each solve begins from the previous temperature map instead of the ambient, since two consecutive SA floorplans are almost the same. With these settings a solve inside SA takes about 29 sweeps on ami33 and 10 on ami49 on average, and with `v1.0` on the machine of Section 5.6 a thermal-aware SA run (weight 0.25) takes about 11 s on ami33 and 7 s on ami49, against 0.6 s and 1.7 s without temperature.
 
 For validation, we also compute the temperature of each block as the area-weighted average of the cells it covers. This matches the block-level output of HotSpot.
 
@@ -137,7 +137,7 @@ ThermoPlace is written in C++17 with the standard library only, and builds with 
 | `Exporters`, `Power` | SVG, HotSpot `.flp`/`.ptrace`, heat map, synthetic power | Jose |
 | `Report`, `app/main.cpp` | CSV reports and command-line program | Eimi |
 
-The interfaces are checked by 57 unit and integration tests written without an external framework (**update the count before submitting**). Every floorplan reported in the results also passes an independent overlap validator.
+The interfaces are checked by 57 unit and integration tests written without an external framework. Every floorplan reported in the results also passes an independent overlap validator.
 
 ## References
 
