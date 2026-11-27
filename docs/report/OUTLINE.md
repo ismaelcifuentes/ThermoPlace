@@ -1,6 +1,6 @@
 # Informe final: estructura y reparto
 
-**Presentación final:** **viernes 27 de noviembre**. **Entrega del PDF:** jueves 3 de diciembre (en inglés). Para la presentación necesitamos los resultados con `v1.0` y las diapositivas listas el **jueves 26 en la noche**.
+**Pitch:** viernes 27 de noviembre, 5 minutos, en inglés, lo presenta **solo Eimi**. **Entrega:** jueves 3 de diciembre: el PDF del informe (en inglés) y **un video de 5 minutos por integrante** sobre la implementación de su parte. Cada integrante sube el PDF y su propio video.
 
 **Formato.** Cada sección se escribe en Markdown en `docs/report/` (como ya están `INTRODUCTION.md`, `RELATED_WORK.md` y `METHOD.md`). Ismael las junta en un solo PDF. Extensión objetivo: **8–10 páginas** más referencias y apéndice. Todos los números de resultados salen de corridas con **`v1.0`**.
 
@@ -8,19 +8,19 @@
 
 | # | Sección | Archivo | Responsable | Estado | Contenido |
 |---|---|---|---|---|---|
-| — | Title, authors, **Abstract** | `ABSTRACT.md` | Ismael | por hacer (al final) | ~200 palabras: problema, método, 3 resultados con número |
-| 1 | **Introduction** | `INTRODUCTION.md` | Eimi | borrador listo | Actualizar contribuciones 2–4 con los números de `v1.0`; completar el punto 4 (GSRC) |
-| 2 | **Related work** | `RELATED_WORK.md` | Eimi | borrador listo | Revisar la referencia [12] marcada `[CHECK]` |
+| — | Title, authors, **Abstract** | `ABSTRACT.md` | Ismael | por hacer (29 nov) | ~200 palabras: problema, método, 3 resultados con número |
+| 1 | **Introduction** | `INTRODUCTION.md` | Eimi | listo (#42, #43) | Actualizar contribuciones 2–4 con los números de `v1.0`; completar el punto 4 (GSRC) |
+| 2 | **Related work** | `RELATED_WORK.md` | Eimi | listo salvo la ref. [12] | Revisar la referencia [12] marcada `[CHECK]` |
 | 3 | **Method** | `METHOD.md` §1–6 y §8 | Ismael | listo | §8 (Implementation) pasa a ser 3.7 |
-| 4 | **Validation against HotSpot** | `VALIDATION_SECTION.md` | Ismael (con números de Jose) | por hacer | Sale de `METHOD.md` §7 + `VALIDATION.md` con `v1.0`: calibración (h, R), error por grilla, potencia desigual, J17 |
-| 5 | **Experimental setup** | `SETUP.md` | Jose | por hacer | Benchmarks y outlines (MCNC; GSRC 15 %), potencia (seed, rangos), parámetros de SA, métricas, máquina y tiempos, comandos y `v1.0` |
-| 6.1 | **Results: area and wirelength** | `RESULTS_SECTION.md` | Eimi | por hacer | E10: aleatorio vs SA vs SA largo; publicados [B\*-tree, Fast-SA]; **ablación** penalización cuadrática vs lineal |
-| 6.2 | **Results: area–temperature trade-off** | `RESULTS_SECTION.md` | Eimi | por hacer | E13 con `v1.0`: tabla + figura de Pareto; base del paquete vs parte que depende de la colocación |
-| 6.3 | **Results: power sensitivity** | `RESULTS_SECTION.md` | Jose | por hacer | E14 + J17: el peso térmico baja la Tmax también en HotSpot (ami33); límite en ami49 |
-| 6.4 | **Results: scalability** | `RESULTS_SECTION.md` | Eimi | por hacer | E6: tiempo vs n (≈ n^2,7), espacio muerto, n100 al 15 % |
-| 7 | **Conclusions and limitations** | `CONCLUSIONS.md` | Ismael | por hacer | Respuesta a la pregunta de investigación, límites, trabajo futuro (contorno O(n), Fast-SA, potencia real) |
-| — | **References** | (al juntar) | Eimi | por hacer | Una sola numeración para todo el informe, estilo IEEE |
-| A | **Appendix: reproducibility and contributions** | `APPENDIX.md` | Ismael | por hacer | Cómo compilar y repetir cada tabla con `v1.0`; tabla de quién hizo qué |
+| 4 | **Validation against HotSpot** | `VALIDATION_SECTION.md` | Ismael (con números de Jose) | listo (#39) | Sale de `METHOD.md` §7 + `VALIDATION.md` con `v1.0`: calibración (h, R), error por grilla, potencia desigual, J17 |
+| 5 | **Experimental setup** | `SETUP.md` | Jose | listo (#40) | Benchmarks y outlines (MCNC; GSRC 15 %), potencia (seed, rangos), parámetros de SA, métricas, máquina y tiempos, comandos y `v1.0` |
+| 6.1 | **Results: area and wirelength** | `RESULTS_SECTION.md` | Eimi | listo (#41) | E10: aleatorio vs SA vs SA largo; publicados [B\*-tree, Fast-SA]; **ablación** penalización cuadrática vs lineal |
+| 6.2 | **Results: area–temperature trade-off** | `RESULTS_SECTION.md` | Eimi | listo (#41) | E13 con `v1.0`: tabla + figura de Pareto; base del paquete vs parte que depende de la colocación |
+| 6.3 | **Results: power sensitivity** | `RESULTS_63.md` (se junta al armar el PDF) | Jose | listo (#40, #44) | E14 + J17: el peso térmico baja la Tmax también en HotSpot (ami33); límite en ami49 |
+| 6.4 | **Results: scalability** | `RESULTS_SECTION.md` | Eimi | listo (#41) | E6: tiempo vs n (≈ n^2,7), espacio muerto, n100 al 15 % |
+| 7 | **Conclusions and limitations** | `CONCLUSIONS.md` | Ismael | listo (#39, #43, #45) | Respuesta a la pregunta de investigación, límites, trabajo futuro (contorno O(n), Fast-SA, potencia real) |
+| — | **References** | (al juntar) | Eimi | por hacer (28 nov – 2 dic) | Una sola numeración para todo el informe, estilo IEEE |
+| A | **Appendix: reproducibility and contributions** | `APPENDIX.md` | Ismael | por hacer (29 nov) | Cómo compilar y repetir cada tabla con `v1.0`; tabla de quién hizo qué |
 
 ## Figuras
 
@@ -40,35 +40,33 @@ Las figuras van en `docs/figures/` (SVG o PNG), con un título que diga el resul
 
 | Fecha | Ismael | Eimi | Jose |
 |---|---|---|---|
-| **mar 24 nov (hoy)** | Une #35; arma la estructura de las diapositivas | Corre E10, E13, E14 y E6 con `v1.0` | — (J15 y J17 ya están, #35) |
-| **mié 25 nov** | Sección 4 (Validation), 7 (Conclusions), Abstract; figuras 1 y 2 | **Hasta el mediodía:** `RESULTS.md` con `v1.0` + figuras 5 y 7. Tarde: secciones 6.1, 6.2, 6.4 | Sección 5 (Setup) y 6.3; figuras 3, 4 y 6; números de HPWL de J10 |
-| **jue 26 nov** | Mañana: diapositivas completas. Tarde: junta el informe (borrador completo en PDF) | Revisa 4 y 5; diapositivas de resultados | Revisa 1 y 6; diapositivas de validación |
-| **jue 26 nov, noche** | **Ensayo completo** de la presentación (los tres, con tiempo) y prueba de la demo | | |
-| **vie 27 nov** | **Presentación final** | | |
-| sáb 28 – mié 2 dic | Correcciones del informe con lo que comente el profesor; PDF final | Referencias unificadas | Revisión final de cifras |
-| **jue 3 dic** | **Entrega del PDF** | | |
+| **vie 27 nov** | **Pitch** (presenta Eimi, 5 min) | **Pitch**; plan B en USB: PDF del Canva y GIF de la demo | **Pitch**; cronometra y prepara preguntas |
+| sáb 28 nov | Guion de su video; arreglos de `METHOD.md` | Guion de su video; ref. [12] | Guion de su video |
+| dom 29 nov | Abstract, Appendix, figuras 1 y 2; revisa los guiones; **junta el PDF** | Referencias IEEE unificadas (con la cita de MCNC y GSRC) | Revisión de cifras del PDF |
+| 30 nov – 2 dic | Graba su video; PDF final | Graba su video | Graba su video |
+| **jue 3 dic** | **Entrega:** cada uno sube el PDF y su video | | |
 
-## Presentación del viernes 27
+## Pitch del viernes 27 (5 min, Eimi)
 
-Diapositivas en inglés, unos 15 minutos (ajustar al tiempo que dé el profesor), **una idea por diapositiva** con su número.
+Canva "ThermoPlace Pitch", 7 diapositivas, unos 40 s cada una. Solo números de `v1.0` que estén en el informe.
 
-| # | Diapositiva | Presenta |
+| # | Diapositiva | Mensaje |
 |---|---|---|
-| 1 | Título, equipo, pregunta de investigación | Ismael |
-| 2 | El problema: calor en los chips y floorplanning | Ismael |
-| 3 | B\*-tree y empaquetado (figura 2) | Ismael |
-| 4 | Simulated annealing y función de costo (figura 1) | Ismael |
-| 5 | Modelo térmico en grilla y disipador de dos partes | Ismael |
-| 6 | Validación contra HotSpot: error vs. grilla (figura 4) | Jose |
-| 7 | Calibración y límite con potencia desigual | Jose |
-| 8 | Área y cables vs. búsqueda aleatoria y publicados; penalización lineal | Eimi |
-| 9 | Frente de Pareto área vs. Tmax (figura 5) | Eimi |
-| 10 | ¿Lo confirma HotSpot? (J17: ami33 sí, ami49 no) | Jose |
-| 11 | Escalabilidad en GSRC (figura 7) | Eimi |
-| 12 | Demo: ami33 en vivo, floorplan y mapa de calor (figura 3) | Eimi |
-| 13 | Conclusiones y límites | Ismael |
+| 1 | Gancho | Chips don't run out of transistors. They run out of cooling. |
+| 2 | Qué es ThermoPlace | B\*-tree + SA + modelo térmico rápido (figura 3) |
+| 3 | Validación | 0.53 °C from HotSpot, at least 40× faster (figura 4) |
+| 4 | Floorplans | 1.245 vs 1.27 mm² en ami33; cabe en el outline sin término térmico |
+| 5 | Temperatura | −3.7 °C en el hot spot de ami33, confirmado por HotSpot (figura 3b); ami49 no baja |
+| 6 | Velocidad | ami33 en ~11 s con temperatura; 300 bloques en 155 s |
+| 7 | Cierre | Open. Tested. Validated. Repo y equipo |
 
-Plan B de la demo: capturas de la corrida guardadas en las diapositivas, por si falla la PC.
+## Videos del 3 de diciembre (5 min cada uno, en inglés)
+
+| Quién | Su parte |
+|---|---|
+| Ismael | B\*-tree y contorno, simulated annealing, modelo térmico y calibración del paquete |
+| Eimi | Lector de benchmarks, `main.cpp` y la CLI, experimentos E10/E13/E14/E6, figuras 5 y 7 |
+| Jose | Función de costo y métricas, potencia, exportación a HotSpot y validación J15/J17, figuras 3, 4 y 6 |
 
 ## Reglas
 
